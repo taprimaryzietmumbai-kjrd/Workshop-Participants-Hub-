@@ -474,7 +474,8 @@
     "employeeCode": "",
     "joiningYear": "",
     "qualification": "",
-    "role": "Participant"
+    "role": "Participant",
+    "dob": "15.05.1985"
   },
   {
     "n": 37,
@@ -500,7 +501,8 @@
     "employeeCode": "",
     "joiningYear": "",
     "qualification": "",
-    "role": "Resource Person"
+    "role": "Resource Person",
+    "dob": "06.10.1980"
   },
   {
     "n": 39,
@@ -513,7 +515,8 @@
     "employeeCode": "",
     "joiningYear": "",
     "qualification": "",
-    "role": "Resource Person"
+    "role": "Resource Person",
+    "dob": "07.10.1984"
   },
   {
     "n": 40,
@@ -701,6 +704,7 @@
     "employeeCode": "",
     "joiningYear": "",
     "qualification": "",
-    "role": ""
+    "role": "",
+    "dob": "27.01.1970"
   }
 ]
