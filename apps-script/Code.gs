@@ -89,6 +89,18 @@ function doGet(e) {
   if (page === "participants") {
     return publicParticipantsJsonp_(e);
   }
+  if (page === "" || page === "dashboard") {
+    const template = HtmlService.createTemplateFromFile("Dashboard");
+    template.webAppUrl = ScriptApp.getService().getUrl();
+    return template.evaluate()
+      .setTitle("ZIET Mumbai — Participants' Dashboard")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+  }
+  if (page === "profile") {
+    return HtmlService.createHtmlOutputFromFile("Profile")
+      .setTitle("ZIET Participant Personal Profile")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+  }
   if (page === "hostel") {
     return HtmlService.createHtmlOutputFromFile("Hostel")
       .setTitle("Hostel Room Preference / Allotment / Payment Confirmation — ZIET Mumbai")
