@@ -583,7 +583,33 @@ function submitHostelPreference(data) {
 
 /** Populate participant details from the correct regional roster. */
 function getHostelParticipantOptions(region) {
-  if (String(region || "").toLowerCase() === "mumbai") return getMumbaiParticipantOptions_();
+  if (String(region || "").toLowerCase() === "mumbai") {
+    const cache = CacheService.getScriptCache();
+    const key = "mumbai-roster-dob-v2";
+    let raw = cache.get(key);
+    if (!raw) {
+      const response = UrlFetchApp.fetch("https://raw.githubusercontent.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/main/data/prtm-mumbai-participants.json", {muteHttpExceptions:true});
+      if (response.getResponseCode() !== 200) throw new Error("The Mumbai participant roster could not be loaded.");
+      raw = response.getContentText();
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length !== 52) throw new Error("Mumbai roster validation failed.");
+      cache.put(key, raw, 300);
+    }
+    return JSON.parse(raw).map(function(p, i) {
+      return {
+        name:String(p.name || "").trim(),
+        employeeCode:String(p.employeeCode || "").trim(),
+        email:String(p.email || "").trim(),
+        gender:String(p.gender || "").trim(),
+        disability:String(p.disability || ""),
+        dob:String(p.dob || "").trim(),
+        school:String(p.school || "").trim(),
+        designation:String(p.designation || "").trim(),
+        rowNumber:i + 1,
+        region:"Mumbai"
+      };
+    }).filter(function(p) { return p.name; });
+  }
   const {sh} = mainSheet_();
   const c = columns_(sh);
   if (!c.employee || !c.name) throw new Error("The participant sheet needs Name and Employee Code columns.");
