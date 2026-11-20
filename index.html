@@ -109,10 +109,27 @@ function populateSchools(){const old=schoolFilter.value;schoolFilter.innerHTML='
 function render(){const list=filtered();rows.innerHTML=list.map(p=>{const enName=stripEnglishSalutations(p.name),hiName=stripHindiSalutations(p.hi);return `<tr><td class="serial">${p.n}</td><td><div class="person-actions"><button class="edit-btn" type="button" data-edit="${p.n}" aria-label="Edit details for ${esc(enName)}">Edit</button><a class="share-btn" href="https://script.google.com/macros/s/AKfycbznM0k6hy-dnLRD1ld9Dva8DF8Bw_MIbvJzBRau2pavgExfTK4yJ4viZpctTF1JjBhN1g/exec" target="_blank" rel="noopener">Update personal information</a></div><div class="name">${esc(p.salutationEn ? p.salutationEn+" " : "")}${esc(enName)}</div><div class="hiname" lang="hi">${esc(p.salutationHi ? p.salutationHi+" " : "")}${esc(hiName)}</div></td><td>${esc(p.designation)}${p.designationHi?`<div class="hiname" lang="hi">${esc(p.designationHi)}</div>`:""}</td><td class="school">${esc(p.school)}${p.schoolHi?`<div class="hiname" lang="hi">${esc(p.schoolHi)}</div>`:""}</td><td>${esc(p.employeeCode)}</td><td>${esc(p.qualification)}</td><td>${esc(p.joiningYear)}</td></tr>`}).join("");rows.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>openEditor(Number(b.dataset.edit))));document.getElementById("empty").hidden=list.length>0;document.getElementById("total").textContent=participants.length}
 participantSelect.addEventListener("change",()=>{selectEditBtn.disabled=!participantSelect.value});selectEditBtn.addEventListener("click",()=>{if(participantSelect.value)openEditor(Number(participantSelect.value))});schoolFilter.addEventListener("change",render);
 populateSchools();populateParticipantSelect();render();
+function switchRegion(region){
+ activeRegion=region;
+ participants=region==="mumbai"?mumbaiParticipants:ahmedabadParticipants;
+ document.getElementById("ahmedabadTab").classList.toggle("active",region==="ahmedabad");
+ document.getElementById("mumbaiTab").classList.toggle("active",region==="mumbai");
+ document.getElementById("ahmedabadTab").setAttribute("aria-selected",String(region==="ahmedabad"));
+ document.getElementById("mumbaiTab").setAttribute("aria-selected",String(region==="mumbai"));
+ document.getElementById("directoryTitle").textContent=region==="mumbai"?"Participant Directory | प्रतिभागी सूची — PRTM Mumbai":"Participant Directory | प्रतिभागी सूची — Ahmedabad Region";
+ document.getElementById("regionStat").textContent=region==="mumbai"?"Mumbai":"Ahmedabad";
+ document.querySelector(".subtitle").innerHTML=region==="mumbai"?"<strong>PRT Music Teachers’ Workshop – Mumbai Region</strong><br>Participants and Resource Persons | प्रतिभागी एवं संसाधक":"<strong>Mass Saturation CPD Training for KV Music Teachers</strong><br>Target Group: KV Music Teachers of KVS Ahmedabad Region";
+ document.querySelector(".badges").innerHTML=region==="mumbai"?"<span class=\"badge\">📍 ZIET Mumbai</span><span class=\"badge\">📅 23–27 November 2026</span><span class=\"badge\">⏱️ 5 Days</span>":"<span class=\"badge\">📍 ZIET Mumbai</span><span class=\"badge\">📅 2–6 November 2026</span><span class=\"badge\">🗓️ Monday–Friday</span><span class=\"badge\">⏱️ 5 Days</span>";
+ document.getElementById("selectEditBtn").disabled=true;
+ populateSchools();populateParticipantSelect();render();
+}
+document.getElementById("ahmedabadTab").addEventListener("click",()=>switchRegion("ahmedabad"));
+document.getElementById("mumbaiTab").addEventListener("click",()=>switchRegion("mumbai"));
 document.getElementById("downloadDirectoryPdf").addEventListener("click",()=>{const previousSchool=schoolFilter.value;schoolFilter.value="";render();const restore=()=>{schoolFilter.value=previousSchool;render();window.removeEventListener("afterprint",restore);};window.addEventListener("afterprint",restore);window.print();});
 window.participantDirectoryCallback=function(sheetRows){
  if(!Array.isArray(sheetRows)||!sheetRows.length)return;
  ahmedabadParticipants=sheetRows.map((p,i)=>{const sourceName=String(COLUMN_B_PARTICIPANT_NAMES[i]||p.name||"").trim();const parsed=splitEnglishSalutation(sourceName);return {n:i+1,name:parsed.name,hi:String(p.hi||"").trim(),school:String(p.school||"").trim(),schoolHi:String(p.schoolHi||"").trim(),employeeCode:String(p.employeeCode||"").trim(),joiningYear:String(p.joiningYear||"").trim(),qualification:String(p.qualification||"").trim(),designation:String(p.designation||"PRT (Music)").trim(),designationHi:String(p.designationHi||"").trim(),salutationEn:parsed.salutation,salutationHi:String(p.salutationHi||"").trim()};}).filter(p=>p.name||p.hi||p.school);
+ if(activeRegion==="ahmedabad")participants=ahmedabadParticipants;
  populateSchools();populateParticipantSelect();render();
 };
 const directoryScript=document.createElement("script");
