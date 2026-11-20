@@ -603,13 +603,45 @@ function getHostelParticipantOptions(region) {
       if (!Array.isArray(parsed) || parsed.length !== 52) throw new Error("Mumbai roster validation failed.");
       cache.put(key, raw, 300);
     }
+    // Keep personal contact and demographic fields out of the public GitHub JSON.
+    // Enrich the Mumbai roster from the private master sheet using Employee Code.
+    const {sh} = mainSheet_();
+    const c = columns_(sh);
+    const sheetRows = sh.getDataRange().getDisplayValues();
+    const privateByCode = {};
+    for (let r = 1; r < sheetRows.length; r++) {
+      const row = sheetRows[r];
+      const code = c.employee ? String(row[c.employee - 1] || "").trim() : "";
+      if (!code) continue;
+      privateByCode[code] = {
+        email: c.email ? String(row[c.email - 1] || "").trim() : "",
+        gender: c.gender ? String(row[c.gender - 1] || "").trim() : "",
+        disability: c.disability ? String(row[c.disability - 1] || "").trim() : ""
+      };
+    }
+    const normalizeGender = function(value) {
+      const v = String(value || "").trim().toLowerCase();
+      if (["m", "male", "पुरुष"].includes(v)) return "Male";
+      if (["f", "female", "महिला"].includes(v)) return "Female";
+      if (["other", "others", "अन्य"].includes(v)) return "Other";
+      if (["prefer not to say", "rather not say"].includes(v)) return "Prefer not to say";
+      return "";
+    };
+    const normalizeDisability = function(value) {
+      const v = String(value || "").trim().toLowerCase();
+      if (["yes", "y", "true", "दिव्यांग", "हाँ", "हां"].includes(v)) return "Yes";
+      if (["no", "n", "false", "not differently abled", "नहीं"].includes(v)) return "No";
+      if (["prefer not to say", "rather not say"].includes(v)) return "Prefer not to say";
+      return "";
+    };
     return JSON.parse(raw).map(function(p, i) {
+      const privateData = privateByCode[String(p.employeeCode || "").trim()] || {};
       return {
         name:String(p.name || "").trim(),
         employeeCode:String(p.employeeCode || "").trim(),
-        email:String(p.email || "").trim(),
-        gender:String(p.gender || "").trim(),
-        disability:String(p.disability || ""),
+        email:privateData.email || "",
+        gender:normalizeGender(privateData.gender),
+        disability:normalizeDisability(privateData.disability),
         dob:String(p.dob || "").trim(),
         doj:String(p.doj || "").trim(),
         school:String(p.school || "").trim(),
