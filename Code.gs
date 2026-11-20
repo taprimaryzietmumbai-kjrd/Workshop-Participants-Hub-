@@ -603,24 +603,33 @@ function getHostelParticipantOptions(region) {
       if (!Array.isArray(parsed) || parsed.length !== 52) throw new Error("Mumbai roster validation failed.");
       cache.put(key, raw, 300);
     }
-    // Keep personal contact and demographic fields out of the public GitHub JSON.
-    // Mumbai private details must be read from the PRTM Mumbai tab.
+
+    // Read private fields from the Mumbai-specific tab. Match tab name without
+    // depending on capitalization, spaces, or punctuation in its display name.
     const mumbaiSS = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sh = mumbaiSS.getSheetByName("PRTM Mumbai");
-    if (!sh) throw new Error('The "PRTM Mumbai" tab was not found in the workshop spreadsheet.');
-    const c = columns_(sh);
-    const sheetRows = sh.getDataRange().getDisplayValues();
+    const mumbaiSheet = mumbaiSS.getSheets().find(function(tab) {
+      return normalized_(tab.getName()) === normalized_("PRTM Mumbai");
+    });
+    if (!mumbaiSheet) throw new Error('The "PRTM Mumbai" tab was not found in the workshop spreadsheet.');
+
+    const c = columns_(mumbaiSheet);
+    const sheetRows = mumbaiSheet.getDataRange().getDisplayValues();
     const privateByCode = {};
+    const privateByName = {};
     for (let r = 1; r < sheetRows.length; r++) {
       const row = sheetRows[r];
       const code = c.employee ? String(row[c.employee - 1] || "").replace(/\D/g, "") : "";
-      if (!code) continue;
-      privateByCode[code] = {
+      const nameCol = c.name;
+      const name = nameCol ? normalized_(row[nameCol - 1]) : "";
+      const privateData = {
         email: c.email ? String(row[c.email - 1] || "").trim() : "",
         gender: c.gender ? String(row[c.gender - 1] || "").trim() : "",
         disability: c.disability ? String(row[c.disability - 1] || "").trim() : ""
       };
+      if (code) privateByCode[code] = privateData;
+      if (name) privateByName[name] = privateData;
     }
+
     const normalizeGender = function(value) {
       const v = String(value || "").trim().toLowerCase();
       if (["m", "male", "पुरुष"].includes(v)) return "Male";
@@ -636,8 +645,13 @@ function getHostelParticipantOptions(region) {
       if (["prefer not to say", "rather not say"].includes(v)) return "Prefer not to say";
       return "";
     };
+
     return JSON.parse(raw).map(function(p, i) {
-      const privateData = privateByCode[String(p.employeeCode || "").replace(/\D/g, "")] || {};
+      const code = String(p.employeeCode || "").replace(/\D/g, "");
+      const name = normalized_(p.name || "");
+      // Prefer Employee Code; use exact normalized name only where the sheet's
+      // Employee Code cell is blank (as in the supplied K R Gurusthale row).
+      const privateData = (code && privateByCode[code]) || privateByName[name] || {};
       return {
         name:String(p.name || "").trim(),
         employeeCode:String(p.employeeCode || "").trim(),
@@ -672,7 +686,6 @@ function getHostelParticipantOptions(region) {
   }
   return out;
 }
-
 
 /* CPD CERTIFICATE ACCESS — email OTP only; no WhatsApp/SMS integration. */
 const CPD_CERTIFICATE_FOLDER_ID = "1RmGYUGD1JyyAE1vMxbXMgSfZcB4JhzRL";
