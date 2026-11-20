@@ -102,7 +102,9 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
   if (page === "hostel") {
-    return HtmlService.createHtmlOutputFromFile("Hostel")
+    const template = HtmlService.createTemplateFromFile("Hostel");
+    template.region = String(e && e.parameter && e.parameter.region || "ahmedabad").toLowerCase() === "mumbai" ? "mumbai" : "ahmedabad";
+    return template.evaluate()
       .setTitle("Hostel Room Preference / Allotment / Payment Confirmation — ZIET Mumbai")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
@@ -112,7 +114,9 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   if (page === "arrival") {
-    return HtmlService.createHtmlOutputFromFile("Arrival")
+    const template = HtmlService.createTemplateFromFile("Arrival");
+    template.region = String(e && e.parameter && e.parameter.region || "ahmedabad").toLowerCase() === "mumbai" ? "mumbai" : "ahmedabad";
+    return template.evaluate()
       .setTitle("Arrival Facilitation & Departure Plan — ZIET Mumbai")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
