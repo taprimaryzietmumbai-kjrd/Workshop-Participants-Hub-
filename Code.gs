@@ -604,14 +604,16 @@ function getHostelParticipantOptions(region) {
       cache.put(key, raw, 300);
     }
     // Keep personal contact and demographic fields out of the public GitHub JSON.
-    // Enrich the Mumbai roster from the private master sheet using Employee Code.
-    const {sh} = mainSheet_();
+    // Mumbai private details must be read from the PRTM Mumbai tab.
+    const mumbaiSS = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sh = mumbaiSS.getSheetByName("PRTM Mumbai");
+    if (!sh) throw new Error('The "PRTM Mumbai" tab was not found in the workshop spreadsheet.');
     const c = columns_(sh);
     const sheetRows = sh.getDataRange().getDisplayValues();
     const privateByCode = {};
     for (let r = 1; r < sheetRows.length; r++) {
       const row = sheetRows[r];
-      const code = c.employee ? String(row[c.employee - 1] || "").replace(/\\D/g, "") : "";
+      const code = c.employee ? String(row[c.employee - 1] || "").replace(/\D/g, "") : "";
       if (!code) continue;
       privateByCode[code] = {
         email: c.email ? String(row[c.email - 1] || "").trim() : "",
@@ -635,7 +637,7 @@ function getHostelParticipantOptions(region) {
       return "";
     };
     return JSON.parse(raw).map(function(p, i) {
-      const privateData = privateByCode[String(p.employeeCode || "").replace(/\\D/g, "")] || {};
+      const privateData = privateByCode[String(p.employeeCode || "").replace(/\D/g, "")] || {};
       return {
         name:String(p.name || "").trim(),
         employeeCode:String(p.employeeCode || "").trim(),
