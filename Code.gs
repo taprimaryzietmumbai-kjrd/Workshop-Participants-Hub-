@@ -249,7 +249,7 @@ function columns_(sh) {
     schoolHi:find(["Vidyalaya Name Hindi","Hindi Vidyalaya","School Name Hindi","Vidyalaya Hindi","विद्यालय","विद्यालय ","विद्यालय का नाम","विद्यालय का नाम हिंदी में","विद्यालय का हिंदी नाम","विद्यालय का नाम (हिंदी)"]),
     gender:find(["Gender","Sex","लिंग"]),
     category:find(["Social Category","Category","Reservation Category","सामाजिक वर्ग"]),
-    disability:find(["Differently Abled","Disability","Divyang","दिव्यांग","दिव्यांगता"]),
+    disability:find(["Differently Abled (Y/N)","Differently Abled","Disability","Divyang","दिव्यांग","दिव्यांगता"]),
     phone:find(["Phone Number","Mobile Number","Phone","Mobile","Contact Number","Whatsapp","WhatsApp","WhatsApp Number","मोबाइल नंबर","फोन नंबर"]),
     salutationEn:find(["English Salutation","Salutation"]),
     salutationHi:find(["Hindi Salutation","हिंदी संबोधन"])
@@ -611,7 +611,7 @@ function getHostelParticipantOptions(region) {
     const privateByCode = {};
     for (let r = 1; r < sheetRows.length; r++) {
       const row = sheetRows[r];
-      const code = c.employee ? String(row[c.employee - 1] || "").trim() : "";
+      const code = c.employee ? String(row[c.employee - 1] || "").replace(/\\D/g, "") : "";
       if (!code) continue;
       privateByCode[code] = {
         email: c.email ? String(row[c.email - 1] || "").trim() : "",
@@ -635,7 +635,7 @@ function getHostelParticipantOptions(region) {
       return "";
     };
     return JSON.parse(raw).map(function(p, i) {
-      const privateData = privateByCode[String(p.employeeCode || "").trim()] || {};
+      const privateData = privateByCode[String(p.employeeCode || "").replace(/\\D/g, "")] || {};
       return {
         name:String(p.name || "").trim(),
         employeeCode:String(p.employeeCode || "").trim(),
