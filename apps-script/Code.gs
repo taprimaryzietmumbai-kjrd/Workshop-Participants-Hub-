@@ -535,10 +535,18 @@ function submitHostelPreference(data) {
   const region = String(data.region || "ahmedabad").toLowerCase() === "mumbai" ? "Mumbai" : "Ahmedabad";
   const name=clean(data.name), employeeCode=clean(data.employeeCode), email=clean(data.email).toLowerCase();
   const gender=clean(data.gender), block=clean(data.block), floor=clean(data.floor);
-  const dob=clean(data.dob), disability=clean(data.disability), groundReason=clean(data.groundReason);
+  let disability=clean(data.disability);
+  const dob=clean(data.dob), groundReason=clean(data.groundReason);
   const arrivalMode=clean(data.arrivalMode), flightTerminal=clean(data.flightTerminal), trainTerminal=clean(data.trainTerminal);
   const otherStation=clean(data.otherStation), busArrival=clean(data.busArrival);
   const arrivalMumbaiTime=clean(data.arrivalMumbaiTime), arrivalHostelTime=clean(data.arrivalHostelTime), arrivalHostelBlock=clean(data.arrivalHostelBlock);
+  if(region==="Mumbai") {
+    const roster=getMumbaiParticipantOptions_();
+    const match=roster.find(p=>String(p.employeeCode||"").trim()===employeeCode && String(p.name||"").trim().toLowerCase()===name.toLowerCase());
+    if(!match) throw new Error("Participant record was not found in the Mumbai master roster. Please refresh the roster.");
+    disability=formatHostelDisability_(match.disability);
+    if(!["Yes","No","Prefer not to say"].includes(disability)) throw new Error("The Mumbai roster does not contain a valid Differently Abled value for this participant. Please contact the coordinator.");
+  }
   if(!name || !employeeCode || !email || !gender || !block || !floor || !dob) throw new Error("Please complete all required fields, including date of birth.");
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
   if(block==="A1" && gender!=="Female") throw new Error("Block A1 is reserved for ladies. Please choose A2 or A3.");
