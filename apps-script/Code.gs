@@ -604,28 +604,30 @@ function submitHostelPreference(data) {
 function getHostelParticipantOptions(region) {
   region = String(region || "ahmedabad").toLowerCase();
   if (region === "mumbai") {
-    const cache = CacheService.getScriptCache();
-    const cacheKey = "hostel-mumbai-roster-v1";
-    let raw = cache.get(cacheKey);
-    if (!raw) {
-      const response = UrlFetchApp.fetch("https://raw.githubusercontent.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/main/data/prtm-mumbai-participants.json", {muteHttpExceptions:true});
-      if (response.getResponseCode() !== 200) throw new Error("The Mumbai participant roster could not be loaded. Please try again later.");
-      raw = response.getContentText();
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed) || parsed.length !== 52) throw new Error("The Mumbai roster did not pass the 52-record validation.");
-      cache.put(cacheKey, raw, 600);
+    // Mumbai roster is stored in a separate, private Apps Script file (MumbaiRoster.gs).
+    // Do not fetch participant DOBs, email addresses or phone numbers from the public GitHub directory.
+    const roster = getMumbaiParticipantOptions_();
+    if (!Array.isArray(roster) || roster.length !== 52) {
+      throw new Error("The Mumbai participant roster did not pass the 52-record validation.");
     }
-    return JSON.parse(raw).map(p => ({
-      name:String(p.name || "").trim(), employeeCode:String(p.employeeCode || "").trim(),
-      email:"", gender:"", disability:"", dob:"", school:String(p.school || "").trim(), region:"Mumbai"
+    return roster.map(p => ({
+      name: String(p.name || "").trim(),
+      employeeCode: String(p.employeeCode || "").trim(),
+      email: String(p.email || "").trim(),
+      gender: String(p.gender || "").trim(),
+      disability: String(p.disability || "").trim(),
+      dob: formatHostelDob_(p.dob),
+      school: String(p.school || "").trim(),
+      region: "Mumbai"
     })).filter(p => p.name);
   }
+
   // Ahmedabad continues to use the existing PRTM ADI master-sheet workflow.
   const {sh} = mainSheet_();
   const range = sh.getDataRange(), values = range.getValues(), display = range.getDisplayValues();
-  const headers = display[0].map(h => String(h || "").toLowerCase().replace(/[^a-z0-9\u0900-\u097f]/g, ""));
+  const headers = display[0].map(h => String(h || "").toLowerCase().replace(/[^a-z0-9\\u0900-\\u097f]/g, ""));
   function findColumn(aliases) {
-    const keys = aliases.map(a => String(a).toLowerCase().replace(/[^a-z0-9\u0900-\u097f]/g, ""));
+    const keys = aliases.map(a => String(a).toLowerCase().replace(/[^a-z0-9\\u0900-\\u097f]/g, ""));
     let index = headers.findIndex(h => keys.includes(h));
     if (index < 0) index = headers.findIndex(h => keys.some(k => h.includes(k)));
     return index;
@@ -637,34 +639,49 @@ function getHostelParticipantOptions(region) {
   const dobCol=findColumn(["Date of Birth","DOB","Birth Date","जन्म तिथि","जन्म दिनांक"]);
   const disabilityCol=findColumn(["Differently Abled","Disability","Divyang","दिव्यांग","दिव्यांगता"]);
   if(empCol<0 || nameCol<0) throw new Error("Employee Code or Participant Name column not found.");
-  function formatDOB(value) {
-    if(!value) return "";
-    if(value instanceof Date && !isNaN(value.getTime())) return Utilities.formatDate(value,Session.getScriptTimeZone(),"yyyy-MM-dd");
-    const s=String(value).trim();
-    let m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
-    if(m) return m[3]+"-"+String(m[2]).padStart(2,"0")+"-"+String(m[1]).padStart(2,"0");
-    m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    return m?s:"";
-  }
-  function formatDisability(value) {
-    const s=String(value||"").trim().toLowerCase();
-    if(/^(yes|y|true|1|दिव्यांग)$/.test(s)) return "Yes";
-    if(/^(no|n|false|0|नहीं|नही)$/.test(s)) return "No";
-    if(s.includes("prefer not")) return "Prefer not to say";
-    return s?String(value).trim():"";
-  }
   const out=[];
   for(let i=1;i<values.length;i++) {
     const row=values[i], employeeCode=String(display[i][empCol]||"").trim(), name=String(display[i][nameCol]||"").trim();
     if(!employeeCode||!name) continue;
-    out.push({employeeCode,name,email:emailCol>=0?String(display[i][emailCol]||"").trim():"",
+    out.push({
+      employeeCode,
+      name,
+      email:emailCol>=0?String(display[i][emailCol]||"").trim():"",
       gender:genderCol>=0?String(display[i][genderCol]||"").trim():"",
-      disability:disabilityCol>=0?formatDisability(display[i][disabilityCol]):"",
-      dob:dobCol>=0?formatDOB(row[dobCol]):"",region:"Ahmedabad"});
+      disability:disabilityCol>=0?formatHostelDisability_(display[i][disabilityCol]):"",
+      dob:dobCol>=0?formatHostelDob_(row[dobCol],display[i][dobCol]):"",
+      region:"Ahmedabad"
+    });
   }
   return out;
 }
 
+/** Normalize roster DOB values to yyyy-MM-dd for the forms. Blank source DOBs stay blank. */
+function formatHostelDob_(value, displayValue) {
+  if (!value && !displayValue) return "";
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  const s = String(displayValue || value || "").trim();
+  let m = s.match(/^(\\d{1,2})[\\/. -](\\d{1,2})[\\/. -](\\d{4})$/);
+  if (m) return m[3] + "-" + String(m[2]).padStart(2,"0") + "-" + String(m[1]).padStart(2,"0");
+  m = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  return m ? s : "";
+}
+
+/** Normalize disability values without inferring missing information. */
+function formatHostelDisability_(value) {
+  const s = String(value || "").trim();
+  if (/^(yes|y|true|1|दिव्यांग)$/i.test(s)) return "Yes";
+  if (/^(no|n|false|0|नहीं|नही)$/i.test(s)) return "No";
+  if (/prefer not/i.test(s)) return "Prefer not to say";
+  return s;
+}
+
+/** Refresh button handler used by both hostel and arrival forms. */
+function refreshHostelParticipantOptions(region) {
+  return getHostelParticipantOptions(region);
+}
 
 /* CPD CERTIFICATE ACCESS — email OTP only; no WhatsApp/SMS integration. */
 const CPD_CERTIFICATE_FOLDER_ID = "1RmGYUGD1JyyAE1vMxbXMgSfZcB4JhzRL";
