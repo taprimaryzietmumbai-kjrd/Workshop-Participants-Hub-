@@ -340,7 +340,8 @@
     "employeeCode": "110483",
     "joiningYear": "2007",
     "qualification": "",
-    "role": "Participant"
+    "role": "Participant",
+    "included": true
   },
   {
     "n": 24,
@@ -668,7 +669,8 @@
     "employeeCode": "",
     "joiningYear": "",
     "qualification": "",
-    "role": ""
+    "role": "Participant",
+    "included": true
   },
   {
     "n": 47,
