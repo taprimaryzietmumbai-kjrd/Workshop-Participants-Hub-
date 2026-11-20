@@ -195,12 +195,13 @@ function submitArrivalFacilitation(data) {
   const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
   const region = String(data && data.region || "ahmedabad").toLowerCase() === "mumbai" ? "Mumbai" : "Ahmedabad";
   const name=clean(data.name), employeeCode=clean(data.employeeCode), email=clean(data.email);
-  const arrivalMode=clean(data.arrivalMode), flightTerminal=clean(data.flightTerminal);
+  const arrivalDate=clean(data.arrivalDate), arrivalMode=clean(data.arrivalMode), flightTerminal=clean(data.flightTerminal);
   const trainTerminal=clean(data.trainTerminal), otherStation=clean(data.otherStation), busArrival=clean(data.busArrival);
   const arrivalMumbaiTime=clean(data.arrivalMumbaiTime), arrivalHostelTime=clean(data.arrivalHostelTime);
   const arrivalHostelBlock=clean(data.arrivalHostelBlock), departureDate=clean(data.departureDate);
   const departureTime=clean(data.departureTime), packedDinner=clean(data.packedDinner);
   if(!name || !employeeCode || !email) throw new Error("Please select your participant record.");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDate) || isNaN(new Date(arrivalDate+"T00:00:00").getTime())) throw new Error("Please select your expected date of arrival in Mumbai.");
   if(!["Train","Flight","Bus"].includes(arrivalMode)) throw new Error("Please select your mode of arrival.");
   if(arrivalMode==="Flight" && !["CSMIA-T1","CSMIA-T2","NMIA"].includes(flightTerminal)) throw new Error("Please select your airport terminal.");
   if(arrivalMode==="Train" && !["Bandra Terminus","Dadar","Mumbai Central","Borivali","CSMT","Thane","Any other"].includes(trainTerminal)) throw new Error("Please select your railway station.");
@@ -214,20 +215,20 @@ function submitArrivalFacilitation(data) {
   const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
   const tab = region === "Mumbai" ? "Arrival Facilitation - Mumbai" : "Arrival Facilitation";
   let sh=ss.getSheetByName(tab);
-  const headers=["Timestamp","Full Name","Employee Code","Email","Arrival Mode","Airport Terminal","Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block","Expected Day of Departure","Expected Time of Departure from ZIET Hostel","Packed Dinner Parcel","Region"];
+  const headers=["Timestamp","Full Name","Employee Code","Email","Expected Date of Arrival in Mumbai","Arrival Mode","Airport Terminal","Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block","Expected Day of Departure","Expected Time of Departure from ZIET Hostel","Packed Dinner Parcel","Region"];
   if(!sh){sh=ss.insertSheet(tab);sh.appendRow(headers);sh.setFrozenRows(1);}
   else {
     if(sh.getLastRow()===0){sh.appendRow(headers);sh.setFrozenRows(1);}
     else {
       const existing=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0];
-      if(existing.indexOf("Region")<0) sh.getRange(1,sh.getLastColumn()+1).setValue("Region");
+      ["Expected Date of Arrival in Mumbai","Region"].forEach(h=>{const current=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(v=>String(v||"").trim());if(current.indexOf(h)<0)sh.getRange(1,sh.getLastColumn()+1).setValue(h);});
     }
   }
   const currentHeaders=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(v=>String(v||"").trim());
-  const record={"Timestamp":new Date(),"Full Name":name,"Employee Code":employeeCode,"Email":email,"Arrival Mode":arrivalMode,"Airport Terminal":arrivalMode==="Flight"?flightTerminal:"","Railway Station":arrivalMode==="Train"?trainTerminal:"","Other Railway Station":arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"","Bus Arrival Point":arrivalMode==="Bus"?busArrival:"","Expected Arrival Time in Mumbai":arrivalMumbaiTime,"Expected Arrival Time at ZIET Hostel":arrivalHostelTime,"Arrival Hostel Block":arrivalHostelBlock,"Expected Day of Departure":departureDate,"Expected Time of Departure from ZIET Hostel":departureTime,"Packed Dinner Parcel":packedDinner,"Region":region};
+  const record={"Timestamp":new Date(),"Full Name":name,"Employee Code":employeeCode,"Email":email,"Expected Date of Arrival in Mumbai":arrivalDate,"Arrival Mode":arrivalMode,"Airport Terminal":arrivalMode==="Flight"?flightTerminal:"","Railway Station":arrivalMode==="Train"?trainTerminal:"","Other Railway Station":arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"","Bus Arrival Point":arrivalMode==="Bus"?busArrival:"","Expected Arrival Time in Mumbai":arrivalMumbaiTime,"Expected Arrival Time at ZIET Hostel":arrivalHostelTime,"Arrival Hostel Block":arrivalHostelBlock,"Expected Day of Departure":departureDate,"Expected Time of Departure from ZIET Hostel":departureTime,"Packed Dinner Parcel":packedDinner,"Region":region};
   sh.appendRow(currentHeaders.map(h=>Object.prototype.hasOwnProperty.call(record,h)?record[h]:""));
-  const arrivalLines="Mode: "+arrivalMode+(arrivalMode==="Flight"?"\\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\\nBus arrival point: "+busArrival:"")+"\\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\\nArrival hostel block: "+arrivalHostelBlock;
-  const pdfText = "ZIET MUMBAI — KVS "+region.toUpperCase()+" REGION\nARRIVAL FACILITATION & DEPARTURE PLAN\n\nPARTICIPANT DETAILS\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\n\nARRIVAL DETAILS\nMode: "+arrivalMode+(arrivalMode==="Flight"?"\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\nBus arrival point: "+busArrival:"")+"\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\nArrival hostel block: "+arrivalHostelBlock+"\n\nDEPARTURE DETAILS\nExpected day of departure: "+departureDate+"\nExpected departure time from ZIET Hostel: "+departureTime+"\nPacked Dinner Parcel: "+packedDinner+"\n\nFor further assistance: Anand Srivastava (Coordinator).";
+  const arrivalLines="Expected date of arrival in Mumbai: "+arrivalDate+"\nMode: "+arrivalMode+(arrivalMode==="Flight"?"\\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\\nBus arrival point: "+busArrival:"")+"\\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\\nArrival hostel block: "+arrivalHostelBlock;
+  const pdfText = "ZIET MUMBAI — KVS "+region.toUpperCase()+" REGION\nARRIVAL FACILITATION & DEPARTURE PLAN\n\nPARTICIPANT DETAILS\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\n\nARRIVAL DETAILS\nExpected date of arrival in Mumbai: "+arrivalDate+"\nMode: "+arrivalMode+(arrivalMode==="Flight"?"\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\nBus arrival point: "+busArrival:"")+"\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\nArrival hostel block: "+arrivalHostelBlock+"\n\nDEPARTURE DETAILS\nExpected day of departure: "+departureDate+"\nExpected departure time from ZIET Hostel: "+departureTime+"\nPacked Dinner Parcel: "+packedDinner+"\n\nFor further assistance: Anand Srivastava (Coordinator).";
   const tempDoc = DocumentApp.create("Arrival Plan - "+name+" - "+employeeCode);  tempDoc.getBody().setText(pdfText);
   tempDoc.saveAndClose();
   const pdfBlob = DriveApp.getFileById(tempDoc.getId()).getAs(MimeType.PDF).setName("Arrival_Departure_"+employeeCode+"_"+departureDate+".pdf");
