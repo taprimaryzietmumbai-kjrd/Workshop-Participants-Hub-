@@ -90,7 +90,9 @@ function doGet(e) {
     return publicParticipantsJsonp_(e);
   }
   if (page === "hostel") {
-    return HtmlService.createHtmlOutputFromFile("Hostel")
+    const t = HtmlService.createTemplateFromFile("Hostel");
+    t.region = String(e && e.parameter ? e.parameter.region || "ahmedabad" : "ahmedabad").toLowerCase();
+    return t.evaluate()
       .setTitle("Hostel Room Preference — ZIET Mumbai")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
@@ -100,7 +102,9 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   if (page === "arrival") {
-    return HtmlService.createHtmlOutputFromFile("Arrival")
+    const t = HtmlService.createTemplateFromFile("Arrival");
+    t.region = String(e && e.parameter ? e.parameter.region || "ahmedabad" : "ahmedabad").toLowerCase();
+    return t.evaluate()
       .setTitle("Arrival Facilitation & Departure Plan — ZIET Mumbai")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
@@ -195,12 +199,16 @@ function submitArrivalFacilitation(data) {
   if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(departureTime)) throw new Error("Please select your expected departure time.");
   if(!["YES","NO"].includes(packedDinner)) throw new Error("Please select YES or NO for the packed dinner parcel.");
   const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
-  const tab="Arrival Facilitation";
+  const isMumbai = String(data.region || "").toLowerCase() === "mumbai";
+  const tab = isMumbai ? "Arrival Facilitation - Mumbai" : "Arrival Facilitation";
   let sh=ss.getSheetByName(tab);
-  const headers=["Timestamp","Full Name","Employee Code","Email","Arrival Mode","Airport Terminal","Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block","Expected Day of Departure","Expected Time of Departure from ZIET Hostel","Packed Dinner Parcel"];
+  const headers=["Region","Timestamp","Full Name","Employee Code","Email","Arrival Mode","Airport Terminal","Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block","Expected Day of Departure","Expected Time of Departure from ZIET Hostel","Packed Dinner Parcel"];
   if(!sh){sh=ss.insertSheet(tab);sh.appendRow(headers);sh.setFrozenRows(1);}
   else if(sh.getLastRow()===0){sh.appendRow(headers);sh.setFrozenRows(1);}
-  sh.appendRow([new Date(),name,employeeCode,email,arrivalMode,arrivalMode==="Flight"?flightTerminal:"",arrivalMode==="Train"?trainTerminal:"",arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"",arrivalMode==="Bus"?busArrival:"",arrivalMumbaiTime,arrivalHostelTime,arrivalHostelBlock,departureDate,departureTime,packedDinner]);
+  let currentHeaders=sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).getDisplayValues()[0].map(v=>String(v||"").trim());
+  headers.forEach(h=>{if(!currentHeaders.includes(h)){currentHeaders.push(h);sh.getRange(1,currentHeaders.length).setValue(h);}});
+  const record={"Region":isMumbai?"Mumbai":"Ahmedabad","Timestamp":new Date(),"Full Name":name,"Employee Code":employeeCode,"Email":email,"Arrival Mode":arrivalMode,"Airport Terminal":arrivalMode==="Flight"?flightTerminal:"","Railway Station":arrivalMode==="Train"?trainTerminal:"","Other Railway Station":arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"","Bus Arrival Point":arrivalMode==="Bus"?busArrival:"","Expected Arrival Time in Mumbai":arrivalMumbaiTime,"Expected Arrival Time at ZIET Hostel":arrivalHostelTime,"Arrival Hostel Block":arrivalHostelBlock,"Expected Day of Departure":departureDate,"Expected Time of Departure from ZIET Hostel":departureTime,"Packed Dinner Parcel":packedDinner};
+  sh.appendRow(currentHeaders.map(h=>Object.prototype.hasOwnProperty.call(record,h)?record[h]:""));
   const arrivalLines="Mode: "+arrivalMode+(arrivalMode==="Flight"?"\\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\\nBus arrival point: "+busArrival:"")+"\\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\\nArrival hostel block: "+arrivalHostelBlock;
   const pdfText = "ZIET MUMBAI — KVS AHMEDABAD REGION\nARRIVAL FACILITATION & DEPARTURE PLAN\n\nPARTICIPANT DETAILS\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\n\nARRIVAL DETAILS\nMode: "+arrivalMode+(arrivalMode==="Flight"?"\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\nBus arrival point: "+busArrival:"")+"\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\nArrival hostel block: "+arrivalHostelBlock+"\n\nDEPARTURE DETAILS\nExpected day of departure: "+departureDate+"\nExpected departure time from ZIET Hostel: "+departureTime+"\nPacked Dinner Parcel: "+packedDinner+"\n\nFor further assistance: Anand Srivastava (Coordinator).";
   const tempDoc = DocumentApp.create("Arrival Plan - "+name+" - "+employeeCode);  tempDoc.getBody().setText(pdfText);
@@ -540,14 +548,15 @@ function submitHostelPreference(data) {
     fileUrl=file.getUrl();
   }
   const ss=SpreadsheetApp.openById("1pksDgeV53waKMP1pmj0CWbpP3qyAT8nrN8RhU9Y-mKE");
-  const tab="Hostel Room Preferences";
+  const isMumbai = String(data.region || "").toLowerCase() === "mumbai";
+  const tab = isMumbai ? "Hostel Room Preferences - Mumbai" : "Hostel Room Preferences";
   let sh=ss.getSheetByName(tab);
-  const headers=["Timestamp","Full Name","Employee Code","Email","Gender for A1 eligibility","Date of Birth","Age at submission","Differently Abled","Preferred Block","Preferred Floor","Preferred Toilet","Ground Floor Reason","Supporting Document URL","Review Status","Arrival Mode","Arrival Airport Terminal","Arrival Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block"];
+  const headers=["Region","Timestamp","Full Name","Employee Code","Email","Gender for A1 eligibility","Date of Birth","Age at submission","Differently Abled","Preferred Block","Preferred Floor","Preferred Toilet","Ground Floor Reason","Supporting Document URL","Review Status","Arrival Mode","Arrival Airport Terminal","Arrival Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block"];
   if(!sh){sh=ss.insertSheet(tab);sh.getRange(1,1,1,headers.length).setValues([headers]);sh.setFrozenRows(1);}
   let currentHeaders=sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).getDisplayValues()[0].map(v=>String(v||"").trim());
   headers.forEach(h=>{if(!currentHeaders.includes(h)){currentHeaders.push(h);sh.getRange(1,currentHeaders.length).setValue(h);}});
   const record={
-    "Timestamp":new Date(),"Full Name":name,"Employee Code":employeeCode,"Email":email,
+    "Region":isMumbai?"Mumbai":"Ahmedabad","Timestamp":new Date(),"Full Name":name,"Employee Code":employeeCode,"Email":email,
     "Gender for A1 eligibility":gender,"Date of Birth":birth,"Age at submission":age,"Differently Abled":disability,
     "Preferred Block":block,"Preferred Floor":floor,"Preferred Toilet":"","Ground Floor Reason":groundReason,
     "Supporting Document URL":fileUrl,"Review Status":"Pending coordinator review","Arrival Mode":arrivalMode,
@@ -572,27 +581,24 @@ function submitHostelPreference(data) {
 }
 
 
-/** Populate the hostel form from the participant master sheet. */
-function getHostelParticipantOptions() {
-  const {sh}=mainSheet_();
-  const c=columns_(sh);
-  if(!c.employee || !c.name) throw new Error("The participant sheet needs Name and Employee Code columns.");
-  const values=sh.getDataRange().getDisplayValues();
-  const dobCol=c.find(["Date of Birth","DOB","Birth Date","जन्म तिथि","जन्म दिनांक"]);
-  const out=[];
-  for(let i=1;i<values.length;i++){
-    const row=values[i];
-    const employeeCode=String(row[c.employee-1]||"").trim();
-    const name=String(row[c.name-1]||"").trim();
-    if(!employeeCode || !name) continue;
+/** Populate participant details from the correct regional roster. */
+function getHostelParticipantOptions(region) {
+  if (String(region || "").toLowerCase() === "mumbai") return getMumbaiParticipantOptions_();
+  const {sh} = mainSheet_();
+  const c = columns_(sh);
+  if (!c.employee || !c.name) throw new Error("The participant sheet needs Name and Employee Code columns.");
+  const values = sh.getDataRange().getDisplayValues();
+  const dobCol = c.find(["Date of Birth", "DOB", "Birth Date", "जन्म तिथि", "जन्म दिनांक"]);
+  const out = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i], employeeCode = String(row[c.employee-1] || "").trim(), name = String(row[c.name-1] || "").trim();
+    if (!name) continue;
     out.push({
-      employeeCode:employeeCode,
-      name:name,
-      email:c.email?String(row[c.email-1]||"").trim():"",
-      gender:c.gender?String(row[c.gender-1]||"").trim():"",
-      disability:c.disability?String(row[c.disability-1]||"").trim():"",
-      dob:dobCol?String(row[dobCol-1]||"").trim():"",
-      rowNumber:i+1
+      employeeCode: employeeCode, name: name,
+      email: c.email ? String(row[c.email-1] || "").trim() : "",
+      gender: c.gender ? String(row[c.gender-1] || "").trim() : "",
+      disability: c.disability ? String(row[c.disability-1] || "").trim() : "",
+      dob: dobCol ? String(row[dobCol-1] || "").trim() : "", rowNumber: i+1
     });
   }
   return out;
