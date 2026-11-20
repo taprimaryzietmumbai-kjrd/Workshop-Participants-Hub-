@@ -603,6 +603,7 @@ function getHostelParticipantOptions(region) {
         gender:String(p.gender || "").trim(),
         disability:String(p.disability || ""),
         dob:String(p.dob || "").trim(),
+        doj:String(p.doj || "").trim(),
         school:String(p.school || "").trim(),
         designation:String(p.designation || "").trim(),
         rowNumber:i + 1,
