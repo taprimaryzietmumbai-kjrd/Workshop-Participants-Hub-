@@ -1,48 +1,47 @@
-ZIET Mumbai — Hostel Preference & Arrival Facilitation patch
-===============================================================
+ZIET Mumbai — Hostel Preference & Arrival Facilitation
+=======================================================
 
-What this patch changes
------------------------
-- Adds the 52-record PRTM Mumbai participant roster to the existing Apps Script workflow.
-- Keeps Ahmedabad's participant list and submissions in their existing sheets.
-- Loads Mumbai participants when the Mumbai forms are opened with region=mumbai.
-- Saves Mumbai hostel preferences to "Hostel Room Preferences - Mumbai".
-- Saves Mumbai arrival plans to "Arrival Facilitation - Mumbai".
-- Adds a Region field to submission records.
-- Mumbai participants are asked to supply missing private details (email, gender, DOB,
-  disability status) in the form. These are not guessed or copied from another region.
-
-Important deployment steps
+Current Apps Script source
 --------------------------
-1. Open the Google Apps Script project:
+- Code.gs: https://github.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/blob/main/apps-script/Code.gs
+- Hostel.html: https://github.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/blob/main/Hostel.html
+- Arrival.html: https://github.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/blob/main/Arrival.html
+
+Required private roster file
+----------------------------
+Add the supplied MumbaiRoster.gs as a separate .gs file in the Apps Script project.
+It contains the Mumbai participant roster and is intentionally NOT committed to this
+public GitHub repository because it includes personal data. The server-side Code.gs
+calls getMumbaiParticipantOptions_() from that file.
+
+What the integration does
+-------------------------
+- Mumbai forms load the 52 participants from the private MumbaiRoster.gs file.
+- Available employee code, email, gender, DOB and school values are prefilled.
+- Source blanks remain blank; participants may complete editable fields where the form
+  permits. No missing personal details are guessed.
+- DOB values are normalized for the date field; blank DOBs are not fabricated.
+- Mumbai hostel submissions go to "Hostel Room Preferences - Mumbai".
+- Mumbai arrival submissions go to "Arrival Facilitation - Mumbai".
+- Ahmedabad continues to use the existing PRTM ADI master-sheet roster and its original
+  response tabs.
+- Both forms use region-aware template rendering and the Refresh Roster handler.
+
+Deployment
+----------
+1. Open the existing Apps Script project:
    https://script.google.com/u/0/home/projects/1IJlCxNAg59Sis_oilmUG-P2GiuzgB8i_ROd5ZZJdwU18yWrx4UlUJoCV/edit
+2. Replace Code.gs with the current apps-script/Code.gs file.
+3. Add MumbaiRoster.gs as a separate script file and paste the supplied private roster.
+4. Replace Hostel.html and Arrival.html with the repository versions linked above.
+5. Save all files, then Deploy > Manage deployments > Edit > New version > Deploy.
+6. Test both Mumbai forms and one Ahmedabad form. Confirm that each submission lands in
+   its correct regional response tab.
 
-2. Replace the contents of Code.gs with the Code.gs file in this package.
-
-3. Update the project's HTML files using the revised copies in the GitHub repository:
-   - https://github.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/blob/main/Hostel.html
-   - https://github.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/blob/main/Arrival.html
-
-4. Save the project. The first Mumbai roster request uses UrlFetchApp to retrieve the
-   public JSON roster from the repository. Google Apps Script may ask you to authorize
-   the required external-request permission.
-
-5. Go to Deploy > Manage deployments > Edit (pencil) > Version: New version > Deploy.
-   Keep the existing deployment URL. The Mumbai hub links already include:
-   ?page=hostel&region=mumbai
-   ?page=arrival&region=mumbai
-
-6. Test both Mumbai forms and confirm that new records appear in the two Mumbai-specific
-   tabs in the configured spreadsheet. Also test an Ahmedabad form submission to confirm
-   its existing workflow remains intact.
-
-Notes
------
-- The source JSON contains 52 Mumbai participant records and is hosted here:
-  https://github.com/taprimaryzietmumbai-kjrd/Workshop-Participants-Hub-/blob/main/data/prtm-mumbai-participants.json
-- Some source records have blank Employee Codes or "99999". The form allows the participant
-  to edit/enter their Employee Code; please verify these values against the official roster.
-- The backend uses the existing spreadsheet configured in Code.gs. It does not change
-  the master participant sheet or infer missing private details.
-- This patch has been syntax-checked, but it has not yet been deployed to the live Apps
-  Script project. The deployment steps above are required before live use.
+Verification status
+-------------------
+The repository source has been statically checked for the region-aware doGet routes,
+form-to-server function names, response-tab routing, and the Mumbai roster helper call.
+The live Apps Script deployment has NOT been updated or end-to-end tested from this
+repository. Do not treat the web app as live-updated until a new Apps Script deployment
+has been saved and tested.
