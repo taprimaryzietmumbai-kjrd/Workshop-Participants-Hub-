@@ -582,6 +582,14 @@ function submitHostelPreference(data) {
 
 
 /** Populate participant details from the correct regional roster. */
+/** Force-refresh the Mumbai roster by clearing its five-minute cache. */
+function refreshHostelParticipantOptions(region) {
+  if (String(region || "").toLowerCase() === "mumbai") {
+    CacheService.getScriptCache().remove("mumbai-roster-dob-v2");
+  }
+  return getHostelParticipantOptions(region);
+}
+
 function getHostelParticipantOptions(region) {
   if (String(region || "").toLowerCase() === "mumbai") {
     const cache = CacheService.getScriptCache();
