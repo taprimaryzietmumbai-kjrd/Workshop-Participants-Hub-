@@ -606,7 +606,8 @@ function getHostelParticipantOptions(region) {
 
     // Read private fields from the Mumbai-specific tab. Match tab name without
     // depending on capitalization, spaces, or punctuation in its display name.
-    const mumbaiSS = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const MUMBAI_ROSTER_SPREADSHEET_ID = "17RACHKnebolHcT9WLnxx4-qHsAWNt1WT-GqLpGITswo";
+    const mumbaiSS = SpreadsheetApp.openById(MUMBAI_ROSTER_SPREADSHEET_ID);
     const mumbaiSheet = mumbaiSS.getSheets().find(function(tab) {
       return normalized_(tab.getName()) === normalized_("PRTM Mumbai");
     });
