@@ -203,6 +203,7 @@ function submitArrivalFacilitation(data) {
   const relievingOrderBase64=String(data.relievingOrderBase64||"");
   const relievingOrderMime=String(data.relievingOrderMime||"");
   const relievingOrderName=String(data.relievingOrderName||"Relieving_Order.jpg").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,100);
+  if(!relievingOrderBase64) throw new Error("Relieving Order photo is mandatory. Please capture and upload the signed order issued by your competent authority.");
   if(!name || !employeeCode || !email) throw new Error("Please select your participant record.");
   const validDate = value => { if(!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false; const d=new Date(value+"T00:00:00"); return !isNaN(d.getTime()) && d.getFullYear()===Number(value.slice(0,4)) && d.getMonth()+1===Number(value.slice(5,7)) && d.getDate()===Number(value.slice(8,10)); };
   if(!validDate(arrivalDate)) throw new Error("Please select a valid expected date of arrival in Mumbai.");
