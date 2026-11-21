@@ -236,7 +236,7 @@ function submitArrivalFacilitation(data) {
     if(relievingOrderBase64.length>16*1024*1024) throw new Error("Relieving order photo is too large. Please retake a smaller image.");
     const bytes=Utilities.base64Decode(relievingOrderBase64);
     const blob=Utilities.newBlob(bytes,relievingOrderMime,relievingOrderName);
-    const photoFolder=DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT");
+    const photoFolder=DriveApp.getFolderById("10lzIXS9nceH4-ULezb_xwN3UWVNTQHXp");
     const photoFile=photoFolder.createFile(blob).setName("Relieving_Order_"+employeeCode+"_"+new Date().getTime()+"."+({"image/jpeg":"jpg","image/png":"png","image/webp":"webp"}[relievingOrderMime]));
     photoFile.setDescription("Mobile-captured relieving order for "+name+" ("+employeeCode+").");
     relievingOrderUrl=photoFile.getUrl();
