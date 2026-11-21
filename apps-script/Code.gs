@@ -231,7 +231,7 @@ function submitArrivalFacilitation(data) {
   const currentHeaders=sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(v=>String(v||"").trim());
   let relievingOrderUrl="";
   if(relievingOrderBase64){
-    if(!/^image\\/(jpeg|png|webp)$/.test(relievingOrderMime)) throw new Error("Relieving order must be captured as a JPEG, PNG or WEBP image.");
+    if(!/^image\/(jpeg|png|webp)$/.test(relievingOrderMime)) throw new Error("Relieving order must be captured as a JPEG, PNG or WEBP image.");
     if(relievingOrderBase64.length>16*1024*1024) throw new Error("Relieving order photo is too large. Please retake a smaller image.");
     const bytes=Utilities.base64Decode(relievingOrderBase64);
     const blob=Utilities.newBlob(bytes,relievingOrderMime,relievingOrderName);
