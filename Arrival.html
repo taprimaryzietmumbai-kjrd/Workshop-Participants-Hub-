@@ -33,7 +33,12 @@
 <div class="heading">🧳 Departure Details</div><div class="grid">
 <label>1. Expected Day of Departure from ZIET Hostel / प्रस्थान की अपेक्षित तिथि<input id="departureDate" type="date" required></label>
 <label>2. Expected Time of Departure from ZIET Hostel / प्रस्थान का अपेक्षित समय<select id="departureTime" required><option value="">Select time</option></select></label>
-<div class="full"><label>3. Would you like a “Packed Dinner Parcel” on the last day of the workshop? / क्या आप कार्यशाला के अंतिम दिन पैक्ड डिनर लेना चाहेंगे?<span class="note">Please select Yes if you expect to leave early or have sightseeing plans.</span><div class="yesno"><label><input type="radio" name="packedDinner" value="YES" required> YES / हाँ</label><label><input type="radio" name="packedDinner" value="NO" required> NO / नहीं</label></div></label></div></div>
+<div class="full"><label>3. Would you like a “Packed Dinner Parcel” on the last day of the workshop? / क्या आप कार्यशाला के अंतिम दिन पैक्ड डिनर लेना चाहेंगे?<span class="note">Please select Yes if you expect to leave early or have sightseeing plans.</span><div class="yesno"><label><input type="radio" name="packedDinner" value="YES" required> YES / हाँ</label><label><input type="radio" name="packedDinner" value="NO" required> NO / नहीं</label></div></label></div>
+<label class="full">4. Capture Relieving Order / कार्यमुक्ति आदेश की फोटो (Mobile Camera Only)
+<input id="relievingOrder" type="file" accept="image/*" capture="environment">
+<span class="note">Use your mobile camera to take a clear photo of the signed relieving order. Image files only; gallery/PDF uploads are not accepted.</span>
+<span class="note" id="relievingOrderStatus">Optional. You may capture the order now or leave this blank.</span>
+</label></div>
 <button class="button" id="submit" type="submit">Submit Arrival & Departure Plan →</button><div id="status" class="status" role="status" aria-live="polite"></div></form>
 
 <section class="cert-panel" aria-labelledby="certificateHeading">
@@ -63,7 +68,18 @@ $("participant").addEventListener("change",()=>{const p=participants[Number($("p
 function updateMode(){const m=$("arrivalMode").value;$("flightWrap").hidden=m!=="Flight";$("trainWrap").hidden=m!=="Train";$("busWrap").hidden=m!=="Bus";$("flightTerminal").required=m==="Flight";$("trainTerminal").required=m==="Train";$("busArrival").required=m==="Bus";updateOther()}
 function updateOther(){const show=$("trainTerminal").value==="Any other";$("otherWrap").hidden=!show;$("otherStation").required=show}
 $("refreshRoster").hidden=!isMumbai;$("refreshRoster").addEventListener("click",()=>loadParticipants(true));$("arrivalMode").addEventListener("change",updateMode);$("trainTerminal").addEventListener("change",updateOther);loadParticipants();
-$("arrivalForm").addEventListener("submit",e=>{e.preventDefault();const btn=$("submit"),status=$("status");btn.disabled=true;status.textContent="Submitting…";status.className="status show";const data={name:$("name").value,employeeCode:$("employeeCode").value,email:$("email").value,arrivalDate:$("arrivalDate").value,arrivalMode:$("arrivalMode").value,flightTerminal:$("flightTerminal").value,trainTerminal:$("trainTerminal").value,otherStation:$("otherStation").value,busArrival:$("busArrival").value,arrivalMumbaiTime:$("arrivalMumbaiTime").value,arrivalHostelTime:$("arrivalHostelTime").value,arrivalHostelBlock:$("arrivalHostelBlock").value,departureDate:$("departureDate").value,departureTime:$("departureTime").value,region:region,packedDinner:document.querySelector('input[name="packedDinner"]:checked')?.value||""};google.script.run.withSuccessHandler(r=>{status.textContent=r.message||"Arrival and departure plan submitted.";status.className="status show ok";btn.disabled=false}).withFailureHandler(err=>{status.textContent=err&&err.message?err.message:"Submission failed. Please try again.";status.className="status show err";btn.disabled=false}).submitArrivalFacilitation(data)});
+$("arrivalForm").addEventListener("submit",e=>{e.preventDefault();const btn=$("submit"),status=$("status");btn.disabled=true;status.textContent="Submitting…";status.className="status show";const data={name:$("name").value,employeeCode:$("employeeCode").value,email:$("email").value,arrivalDate:$("arrivalDate").value,arrivalMode:$("arrivalMode").value,flightTerminal:$("flightTerminal").value,trainTerminal:$("trainTerminal").value,otherStation:$("otherStation").value,busArrival:$("busArrival").value,arrivalMumbaiTime:$("arrivalMumbaiTime").value,arrivalHostelTime:$("arrivalHostelTime").value,arrivalHostelBlock:$("arrivalHostelBlock").value,departureDate:$("departureDate").value,departureTime:$("departureTime").value,region:region,packedDinner:document.querySelector('input[name="packedDinner"]:checked')?.value||""};
+const photo=$("relievingOrder").files[0];
+const sendSubmission=()=>google.script.run.withSuccessHandler(r=>{status.textContent=r.message||"Arrival and departure plan submitted.";status.className="status show ok";btn.disabled=false}).withFailureHandler(err=>{status.textContent=err&&err.message?err.message:"Submission failed. Please try again.";status.className="status show err";btn.disabled=false}).submitArrivalFacilitation(data);
+if(photo){
+ if(!photo.type.startsWith("image/")){status.textContent="Please capture the relieving order using the mobile camera. Image files only.";status.className="status show err";btn.disabled=false;return;}
+ if(photo.size>12*1024*1024){status.textContent="The photo is too large. Please retake it with a lower camera resolution (maximum 12 MB).";status.className="status show err";btn.disabled=false;return;}
+ $("relievingOrderStatus").textContent="Preparing camera photo…";
+ const reader=new FileReader();
+ reader.onload=()=>{const parts=String(reader.result).split(",");data.relievingOrderBase64=parts[1]||"";data.relievingOrderMime=photo.type;data.relievingOrderName=photo.name||"Relieving_Order.jpg";sendSubmission();};
+ reader.onerror=()=>{status.textContent="Could not read the captured photo. Please try again.";status.className="status show err";btn.disabled=false;};
+ reader.readAsDataURL(photo);
+}else sendSubmission();});
 
 /* CPD certificate verification — email OTP only. */
 let cpdCertificateSession = "";
