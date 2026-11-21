@@ -106,7 +106,7 @@ function doGet(e) {
     template.region = String(e && e.parameter && e.parameter.region || "ahmedabad").toLowerCase() === "mumbai" ? "mumbai" : "ahmedabad";
     return template.evaluate()
       .setTitle("Hostel Room Preference / Allotment / Payment Confirmation — ZIET Mumbai")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   if (page === "certificate") {
     return HtmlService.createHtmlOutputFromFile("Certificate")
@@ -118,7 +118,7 @@ function doGet(e) {
     template.region = String(e && e.parameter && e.parameter.region || "ahmedabad").toLowerCase() === "mumbai" ? "mumbai" : "ahmedabad";
     return template.evaluate()
       .setTitle("Arrival Facilitation & Departure Plan — ZIET Mumbai")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   return HtmlService.createHtmlOutputFromFile("Profile")
     .setTitle("ZIET Participant Personal Profile")
