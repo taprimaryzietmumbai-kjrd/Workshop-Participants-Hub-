@@ -18,7 +18,8 @@ const MAX_OTP_ATTEMPTS = 5;
 function doPost(e) {
   try {
     const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
-    const payloadText = rawBody || (e && e.parameter ? String(e.parameter.payload || "") : "");
+    const parameterPayload = e && e.parameter ? String(e.parameter.payload || "") : "";
+    const payloadText = rawBody.trim().charAt(0) === "{" ? rawBody : parameterPayload;
     if (!payloadText) throw new Error("No request details were received.");
     const p = JSON.parse(payloadText);
     if (p.action === "saveArrivalPdf") {
