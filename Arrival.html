@@ -73,6 +73,7 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
     /* Print / Save as PDF */
     .document-actions { flex-wrap: wrap; }
     .print-action, .pdf-action { background: #374151; color: #fff; }
+    .drive-action { background: #047857; color: #fff; }
     @media print {
       @page { size: A4; margin: 12mm; }
       body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -612,10 +613,12 @@ n>
       <div class="actions document-actions" aria-label="Print and PDF options">
         <button class="action print-action" type="button" onclick="printForm()">🖨️ Print</button>
         <button class="action pdf-action" type="button" onclick="saveAsPDF()">📄 Save as PDF</button>
+        <button class="action drive-action" id="saveDrivePdfBtn" type="button" onclick="saveFormPdfToDrive()">☁️ Save PDF to Google Drive &amp; Notify Coordinator</button>
         <button class="action submit" id="submitBtn" type="submit">🚀 Submit Schedule to Google Sheet</button>
         <button class="action reset" type="reset">↻ Clear Form</button>
       </div>
       <div id="status" class="status"></div>
+      <div id="drivePdfStatus" class="status" aria-live="polite"></div>
     </section>
   </form>
 </main>
@@ -1389,6 +1392,109 @@ function checkSubmissionStatus(requestId, timeoutMs) {
     };
     poll();
   });
+}
+
+
+async function saveFormPdfToDrive() {
+  const form = document.getElementById("form");
+  const button = document.getElementById("saveDrivePdfBtn");
+  const status = document.getElementById("drivePdfStatus");
+  if (!form || !button || !status) return;
+
+  const fields = [];
+  Array.from(form.elements).forEach(function(el) {
+    if (!el.name || el.disabled || ["button","submit","reset","file"].includes((el.type || "").toLowerCase())) return;
+    if (["participantSignature","signature","signatureData"].includes(el.name)) return;
+    if ((el.type === "checkbox" || el.type === "radio") && !el.checked) return;
+    let value = "";
+    if (el.tagName === "SELECT") {
+      value = el.multiple
+        ? Array.from(el.selectedOptions).map(o => o.text).join(", ")
+        : (el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : "");
+      if (el.value === "") value = "";
+    } else {
+      value = String(el.value || "").trim();
+    }
+    if (value) {
+      const label = (el.labels && el.labels.length)
+        ? Array.from(el.labels).map(l => l.textContent.trim()).join(" / ")
+        : (el.getAttribute("aria-label") || el.name);
+      fields.push({label:label.replace(/\\s+/g," ").trim(), value:value});
+    }
+  });
+
+  const participant = (document.getElementById("participant") || {}).value || "";
+  const employeeCode = (document.getElementById("employeeCode") || {}).value || "";
+  const workshop = (document.getElementById("courseName") || {}).value || "";
+  const requestId = "arrival-pdf-" + Date.now() + "-" + Math.random().toString(36).slice(2,10);
+
+  button.disabled = true;
+  status.className = "status";
+  status.style.display = "block";
+  status.textContent = "⏳ Creating PDF and saving it to the ZIET Mumbai Google Drive folder…";
+
+  try {
+    await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({
+        action:"saveArrivalPdf",
+        requestId:requestId,
+        participantName:participant,
+        employeeCode:employeeCode,
+        workshop:workshop,
+        fields:fields
+      })
+    });
+
+    const started = Date.now();
+    const result = await new Promise(function(resolve,reject) {
+      function poll() {
+        const callback = "__arrivalPdfStatus_" + Math.random().toString(36).slice(2);
+        const script = document.createElement("script");
+        let settled = false;
+        const cleanup = function() {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          try { delete window[callback]; } catch(e) {}
+          script.remove();
+        };
+        const timer = setTimeout(function() {
+          cleanup();
+          if (Date.now() - started > 45000) reject(new Error("Drive upload confirmation timed out. Check the Drive folder before trying again."));
+          else setTimeout(poll, 1200);
+        }, 5000);
+        window[callback] = function(data) {
+          cleanup();
+          if (data && data.status === "saved") resolve(data);
+          else if (data && data.status === "error") reject(new Error(data.message || "Google Drive could not save the PDF."));
+          else if (Date.now() - started > 45000) reject(new Error("Drive upload confirmation timed out. Check the Drive folder before trying again."));
+          else setTimeout(poll, 1200);
+        };
+        script.onerror = function() {
+          cleanup();
+          if (Date.now() - started > 45000) reject(new Error("Could not verify the Google Drive upload."));
+          else setTimeout(poll, 1200);
+        };
+        script.src = GOOGLE_APPS_SCRIPT_URL + "?action=checkDrivePdf&requestId=" +
+          encodeURIComponent(requestId) + "&callback=" + callback + "&_=" + Date.now();
+        document.head.appendChild(script);
+      }
+      poll();
+    });
+
+    status.className = "status ok";
+    status.innerHTML = "✅ PDF saved to Google Drive. Notification email sent to taprimaryzietmumbai@gmail.com. <a target=\"_blank\" rel=\"noopener\" href=\"" +
+      String(result.url || "").replace(/&/g,"&amp;").replace(/"/g,"&quot;") +
+      "\">Open saved PDF</a>";
+  } catch (err) {
+    status.className = "status err";
+    status.textContent = "⚠️ " + (err && err.message ? err.message : "PDF upload failed.");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 document.getElementById("form").addEventListener("submit", async function(e) {
