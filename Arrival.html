@@ -1538,6 +1538,7 @@ document.getElementById("form").addEventListener("submit", async function(e) {
   }
   const requestId = 'ziet-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
   data.requestId = requestId;
+  data.action = "submitArrivalForm";
   btn.disabled = true;
   status.className = "status"; status.style.display = "block";
   status.textContent = "⏳ Sending entry to Google Sheets and waiting for server confirmation…";
