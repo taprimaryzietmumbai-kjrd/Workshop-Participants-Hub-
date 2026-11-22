@@ -16,12 +16,22 @@ const MAX_OTP_ATTEMPTS = 5;
  * Receives public-directory correction requests and updates the matched master participant row.
  */
 function doPost(e) {
+  let p = null;
   try {
     const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
     const parameterPayload = e && e.parameter ? String(e.parameter.payload || "") : "";
     const payloadText = rawBody.trim().charAt(0) === "{" ? rawBody : parameterPayload;
     if (!payloadText) throw new Error("No request details were received.");
-    const p = JSON.parse(payloadText);
+    p = JSON.parse(payloadText);
+    if (p.action === "submitArrivalForm") {
+      const result = saveArrivalFormSubmission_(p);
+      CacheService.getScriptCache().put(
+        "arrival-submission-status-" + String(p.requestId || ""),
+        JSON.stringify({status:"success", message:result.message, row:result.row, sheetName:result.sheetName}),
+        600
+      );
+      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+    }
     if (p.action === "saveArrivalPdf") {
       const saved = saveArrivalFormPdf_(p);
       return ContentService.createTextOutput(JSON.stringify(saved)).setMimeType(ContentService.MimeType.JSON);
@@ -86,12 +96,28 @@ function doPost(e) {
     log.appendRow([new Date(),clean(p.participantId),clean(p.previousSalutationEn),oldName,clean(p.previousSalutationHi),oldHindi,oldSchool,clean(p.previousSchoolHi),clean(p.previousJoiningYear),clean(p.salutationEn),clean(p.name),clean(p.salutationHi),clean(p.hi),clean(p.school),clean(p.schoolHi),year,"Automatically updated master sheet",rowNumber]);
     return ContentService.createTextOutput("Correction saved directly to the master sheet.").setMimeType(ContentService.MimeType.TEXT);
   } catch (err) {
-    return ContentService.createTextOutput("Correction could not be saved: " + String(err.message || err)).setMimeType(ContentService.MimeType.TEXT);
+    const message = String(err && err.message || err);
+    if (p && p.requestId && p.action === "submitArrivalForm") {
+      CacheService.getScriptCache().put(
+        "arrival-submission-status-" + String(p.requestId),
+        JSON.stringify({status:"error", message:message}),
+        600
+      );
+    }
+    if (p && p.requestId && p.action === "saveArrivalPdf") {
+      CacheService.getScriptCache().put(
+        "arrival-pdf-status-" + String(p.requestId),
+        JSON.stringify({status:"error", message:message}),
+        600
+      );
+    }
+    return ContentService.createTextOutput(JSON.stringify({ok:false, error:message})).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function doGet(e) {
   const action = e && e.parameter ? String(e.parameter.action || "") : "";
+  if (action === "checkSubmission") return checkArrivalSubmissionStatus_(e);
   if (action === "checkDrivePdf") return checkArrivalPdfStatus_(e);
   const page = e && e.parameter ? String(e.parameter.page || "") : "";
   if (page === "participants") {
@@ -270,6 +296,135 @@ function submitArrivalFacilitation(data) {
  * and email the coordinator a link. The web app must execute as the Drive owner
  * (econtentzietmumbai@gmail.com) or an account with Editor access to that folder.
  */
+
+/**
+ * Save the Arrival.html form as a complete row.
+ * Every form field is optional. Headers are added without overwriting existing columns.
+ * Request IDs make retries idempotent so a repeated click cannot create duplicate rows.
+ */
+function saveArrivalFormSubmission_(payload) {
+  payload = payload || {};
+  const requestId = String(payload.requestId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0,120);
+  const regionValue = String(payload.region || "").toLowerCase();
+  const isMumbai = regionValue.indexOf("mumbai") !== -1;
+  const sheetName = isMumbai ? "Arrival Facilitation - Mumbai" : "Arrival Facilitation";
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sh = ss.getSheetByName(sheetName);
+  if (!sh) sh = ss.insertSheet(sheetName);
+
+  const labels = {
+    applicantName:"Full Name",
+    name:"Full Name",
+    employeeCode:"Employee Code",
+    email:"Email",
+    designation:"Designation",
+    region:"Region",
+    kvName:"Kendriya Vidyalaya",
+    state:"State / UT",
+    officeAddress:"KV Address",
+    officePhone:"KV Office Phone",
+    residencePhone:"Residence Phone",
+    mobile:"Mobile Number",
+    purpose:"Purpose of Visit",
+    participant:"Hostel Allottee / Arriving Participant",
+    block:"Hostel Block",
+    room:"Room Number",
+    arrivalDate:"Expected Date of Arrival",
+    arrivalTime:"Expected Time of Arrival",
+    actualArrival:"Actual Check-in",
+    departureDate:"Expected Date of Departure",
+    departureTime:"Expected Time of Departure",
+    actualCheckout:"Actual Check-out",
+    isLocalParticipant:"Local Participant",
+    localHostelOccupied:"Local Participant Hostel Occupied",
+    nonLocalHostelOccupied:"Non-local Participant Hostel Occupied",
+    noPaymentReason:"Reason for No Payment",
+    arrived:"Whether Arrived",
+    checkedIn:"Checked In to Allotted Room",
+    daysStayed:"Number of Days Stayed",
+    roomOccupancy:"Room Occupancy",
+    hostelRatePerDay:"Hostel Rate Per Day",
+    finalHostelAmount:"Final Hostel Amount",
+    course:"Course Name",
+    coordinator:"Course Coordinator",
+    facilitationBy:"Facilitation Ensured By",
+    facilitationSlot:"Arrival Facilitation Time Slot",
+    remarks:"Remarks",
+    arrivalMode:"Arrival Mode",
+    flightTerminal:"Airport Terminal",
+    trainTerminal:"Railway Station",
+    otherStation:"Other Railway Station",
+    busArrival:"Bus Arrival Point",
+    arrivalMumbaiTime:"Expected Arrival Time in Mumbai",
+    arrivalHostelTime:"Expected Arrival Time at ZIET Hostel",
+    arrivalHostelBlock:"Arrival Hostel Block",
+    packedDinner:"Packed Dinner Parcel"
+  };
+
+  const fieldValues = {};
+  Object.keys(payload).forEach(function(key) {
+    if (["action","requestId","participantSignature","shared"].includes(key)) return;
+    const value = payload[key];
+    if (value === undefined || value === null || typeof value === "object") return;
+    let label = labels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).trim();
+    const family = key.match(/^family(Name|Sex|Relation|Age|KvsStatus)(\d+)$/);
+    if (family) {
+      const type = {Name:"Name",Sex:"Sex",Relation:"Relationship",Age:"Age",KvsStatus:"KVS Status"}[family[1]];
+      label = "Family Member " + family[2] + " — " + type;
+    }
+    fieldValues[label] = String(value).trim();
+  });
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    let headers = sh.getLastColumn()
+      ? sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(v => String(v || "").trim())
+      : [];
+    if (!headers.length || !headers.some(Boolean)) headers = [];
+    ["Timestamp","Submission Request ID"].forEach(function(h) {
+      if (headers.indexOf(h) === -1) headers.push(h);
+    });
+    Object.keys(fieldValues).forEach(function(h) {
+      if (headers.indexOf(h) === -1) headers.push(h);
+    });
+    if (headers.length) sh.getRange(1,1,1,headers.length).setValues([headers]);
+
+    const requestCol = headers.indexOf("Submission Request ID") + 1;
+    if (requestId && sh.getLastRow() > 1 && requestCol > 0) {
+      const existing = sh.getRange(2,requestCol,sh.getLastRow()-1,1).getDisplayValues();
+      for (let i=0; i<existing.length; i++) {
+        if (String(existing[i][0]) === requestId) {
+          return {ok:true, status:"success", message:"This submission was already saved; no duplicate row was created.", row:i+2, sheetName:sheetName};
+        }
+      }
+    }
+
+    const record = {};
+    record["Timestamp"] = new Date();
+    record["Submission Request ID"] = requestId;
+    Object.keys(fieldValues).forEach(h => record[h] = fieldValues[h]);
+    const rowValues = headers.map(h => Object.prototype.hasOwnProperty.call(record,h) ? record[h] : "");
+    sh.appendRow(rowValues);
+    return {ok:true, status:"success", message:"Arrival form saved successfully to Google Sheets.", row:sh.getLastRow(), sheetName:sheetName};
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function checkArrivalSubmissionStatus_(e) {
+  const callback = String(e && e.parameter && e.parameter.callback || "");
+  if (!/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) {
+    return ContentService.createTextOutput("Invalid callback").setMimeType(ContentService.MimeType.TEXT);
+  }
+  const requestId = String(e && e.parameter && e.parameter.requestId || "").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,120);
+  const raw = requestId ? CacheService.getScriptCache().get("arrival-submission-status-" + requestId) : "";
+  const data = raw ? JSON.parse(raw) : {status:"pending"};
+  return ContentService.createTextOutput(callback + "(" + JSON.stringify(data).replace(/</g,"\\u003c") + ");")
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+
 function saveArrivalFormPdf_(payload) {
   const requestId = String(payload.requestId || "").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,100);
   if (!requestId) throw new Error("Missing PDF request ID.");
