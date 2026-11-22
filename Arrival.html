@@ -110,12 +110,12 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
       <h2>📋 Hostel Accommodation / Participant Details</h2>
       <div class="grid">
         <div>
-          <label>👤 Name *</label>
-         <select name="applicantName" required>
+          <label>👤 Name</label>
+         <select name="applicantName">
   <option value="">-- Select Participant --</option>
 </select>
-          <label>🎓 Designation *</label>
-          <select name="designation" required>
+          <label>🎓 Designation</label>
+          <select name="designation">
             <option value="">-- Select Post / Designation --</option>
             <option>Principal</option>
             <option>Vice-Principal</option>
@@ -164,8 +164,8 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
           </select>
         </div>
         <div>
-          <label>🗺️ KVS Region *</label>
-          <select name="region" id="kvRegion" required>
+          <label>🗺️ KVS Region</label>
+          <select name="region" id="kvRegion">
             <option value="">-- Select KVS Region First --</option>
             <option>Agra</option>
             <option>Ahmedabad</option>
@@ -195,15 +195,15 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
           </select>
         </div>
         <div>
-          <label>🏫 Name of Kendriya Vidyalaya / KV *</label>
-          <select name="kvName" id="kvName" required disabled>
+          <label>🏫 Name of Kendriya Vidyalaya / KV</label>
+          <select name="kvName" id="kvName" disabled>
             <option value="">-- Select KVS Region First --</option>
           </select>
         </div>
         <div>
-          <label>🗺️ State / UT *</label>
-          <input name="state" id="kvState" type="text" required readonly placeholder="-- Will be filled automatically after selecting the KV --">
-          <small class="hint">State / UT is required and will be filled automatically after you select the KV.</small>
+          <label>🗺️ State / UT</label>
+          <input name="state" id="kvState" type="text" readonly placeholder="-- Will be filled automatically after selecting the KV --">
+          <small class="hint">State / UT is and will be filled automatically after you select the KV.</small>
         </div>
         <div class="full">
           <label>🏢 Office Address</label>
@@ -232,16 +232,16 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
           <input name="residencePhone" type="tel" placeholder="Residence telephone number">
         </div>
         <div>
-          <label>📱 Mobile No. *</label>
-          <input name="mobile" type="tel" inputmode="numeric" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+          <label>📱 Mobile No.</label>
+          <input name="mobile" type="tel" inputmode="numeric" placeholder="10-digit mobile number" pattern="[0-9]{10}">
         </div>
         <div class="full">
           <label>✉️ E-mail</label>
           <input name="email" type="email" placeholder="name@example.com">
         </div>
         <div>
-          <label>🎯 Purpose of Visit *</label>
-          <select name="purpose" required>
+          <label>🎯 Purpose of Visit</label>
+          <select name="purpose">
             <option value="">-- Select Purpose --</option>
             <option>OFFICIAL</option>
             <option>PERSONAL</option>
@@ -272,8 +272,8 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
       <h2>👤 Participant Arrival Details</h2>
       <div class="grid">
         <div class="full">
-          <label>👤 Name of the Hostel Allottee / Arriving Participant *</label>
-          <select name="participant" required>
+          <label>👤 Name of the Hostel Allottee / Arriving Participant</label>
+          <select name="participant">
             <option value="">-- Select Participant --</option>
             <optgroup label="Ahmedabad Region">
               <option>Shri Heraj Ram Chaudhary</option>
@@ -331,8 +331,8 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
           <div class="note">Select the hostel allottee / arriving participant from the feeder-region list.</div>
         </div>
         <div>
-          <label>🏢 Block No. *</label>
-          <select name="block" required>
+          <label>🏢 Block No.</label>
+          <select name="block">
             <option value="">-- Select Block --</option>
             <option>A1</option>
             <option>A2</option>
@@ -340,8 +340,8 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
           </select>
         </div>
         <div>
-          <label>🚪 Room No. *</label>
-          <select name="room" required>
+          <label>🚪 Room No.</label>
+          <select name="room">
             <option value="">-- Select Room No. --</option>
             <option>1</option>
             <option>2</option>
@@ -359,20 +359,20 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
           </select>
         </div>
         <div>
-          <label>📅 Date of Arrival *</label>
-          <input name="arrivalDate" type="date" required>
+          <label>📅 Date of Arrival</label>
+          <input name="arrivalDate" type="date">
         </div>
         <div>
-          <label>🕒 Time of Arrival *</label>
-          <input name="arrivalTime" type="time" required>
+          <label>🕒 Time of Arrival</label>
+          <input name="arrivalTime" type="time">
         </div>
         <div>
-          <label>📅 Expected Date of Departure *</label>
-          <input name="departureDate" type="date" required>
+          <label>📅 Expected Date of Departure</label>
+          <input name="departureDate" type="date">
         </div>
         <div>
-          <label>🕒 Expected Time of Departure *</label>
-          <input name="departureTime" type="time" required>
+          <label>🕒 Expected Time of Departure</label>
+          <input name="departureTime" type="time">
         </div>
         <div>
           <label>🕘 Actual Check-in Date and Time</label>
@@ -384,8 +384,8 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
         </div>
 
         <div>
-          <label>🏠 Whether Local Participant *</label>
-          <select name="isLocalParticipant" id="isLocalParticipant" required>
+          <label>🏠 Whether Local Participant</label>
+          <select name="isLocalParticipant" id="isLocalParticipant">
             <option value="">-- Select --</option>
             <option value="YES">YES</option>
             <option value="NO">NO</option>
@@ -393,7 +393,7 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
         </div>
 
         <div id="localHostelWrap" style="display:none">
-          <label>🛏️ If Yes, Whether Hostel Occupied *</label>
+          <label>🛏️ If Yes, Whether Hostel Occupied</label>
           <select name="localHostelOccupied" id="localHostelOccupied">
             <option value="">-- Select --</option>
             <option value="YES">YES</option>
@@ -402,7 +402,7 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
         </div>
 
         <div id="nonLocalHostelWrap" style="display:none">
-          <label>🛏️ If No, Whether Hostel Occupied *</label>
+          <label>🛏️ If No, Whether Hostel Occupied</label>
           <select name="nonLocalHostelOccupied" id="nonLocalHostelOccupied">
             <option value="">-- Select --</option>
             <option value="YES">YES</option>
@@ -411,7 +411,7 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
         </div>
 
         <div id="noPaymentReasonWrap" class="full" style="display:none">
-          <label>📝 Reason for No Payment *</label>
+          <label>📝 Reason for No Payment</label>
           <select name="noPaymentReason" id="noPaymentReason">
             <option value="">-- Select Reason --</option>
             <option value="Not Occupying Hostel - as a local participant">Not Occupying Hostel - as a local participant</option>
@@ -420,16 +420,16 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
         </div>
 
         <div>
-          <label>✅ Whether Arrived *</label>
-          <select name="arrived" required>
+          <label>✅ Whether Arrived</label>
+          <select name="arrived">
             <option value="">-- Select --</option>
             <option>YES</option>
             <option>NO</option>
           </select>
         </div>
         <div>
-          <label>🛏️ Checked In the Allotted Room? *</label>
-          <select name="checkedIn" required>
+          <label>🛏️ Checked In the Allotted Room?</label>
+          <select name="checkedIn">
             <option value="">-- Select --</option>
             <option>YES</option>
             <option>NO</option>
@@ -443,12 +443,12 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
       <p class="note">If the participant occupies the hostel, hostel payment is calculated automatically from the <strong>Actual Check-in Date and Time</strong> and <strong>Actual Date and Time of Checking Out</strong> entered in the Participant Arrival Details tab. <strong>Hostel billing is based on actual Check-in and Check-out time: every completed 24-hour period counts as 1 day, and any part of an additional 24-hour period counts as another full day. For example, 12 noon to 12 noon next day = 1 day; 12 noon to 2 PM next day = 2 days.</strong></p>
       <div class="grid">
         <div>
-          <label>🌙 No. of Days Stayed *</label>
+          <label>🌙 No. of Days Stayed</label>
           <input name="daysStayed" id="daysStayed" type="number" min="1" readonly placeholder="Will be calculated automatically">
         </div>
         <div>
           <label>🛏️ Room Occupied</label>
-          <select name="roomOccupancy" id="roomOccupancy" required>
+          <select name="roomOccupancy" id="roomOccupancy">
             <option value="">-- Select Occupancy --</option>
             <option value="Single Occupant">Single Occupant — ₹500/- per day</option>
             <option value="With Other Members">With Other Members — ₹350/- per day</option>
@@ -481,13 +481,13 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
       <h2>📚 Course &amp; Coordinator Details</h2>
       <div class="grid">
         <div>
-          <label class="icon-label"><span class="icon">📖</span>Name of the Course *</label>
-          <input name="course" id="courseName" readonly placeholder="Loading course title from Google Sheet tab…" required aria-describedby="courseTitleStatus">
+          <label class="icon-label"><span class="icon">📖</span>Name of the Course</label>
+          <input name="course" id="courseName" readonly placeholder="Loading course title from Google Sheet tab…" aria-describedby="courseTitleStatus">
           <small id="courseTitleStatus" class="note" role="status">Loading course title from the designated workshop Google Sheet…</small>
         </div>
         <div>
-          <label class="icon-label"><span class="icon">🧑‍💼</span>Name of the Course Coordinator *</label>
-          <select name="coordinator" required>
+          <label class="icon-label"><span class="icon">🧑‍💼</span>Name of the Course Coordinator</label>
+          <select name="coordinator">
             <option value="">-- Select Course Coordinator --</option>
             <option value="Mrs. Seema Mishra, TA (Economics)">Mrs. Seema Mishra, TA (Economics)</option>
             <option value="Mr. Gajendra L. Kapde, TA (Chemistry)">Mr. Gajendra L. Kapde, TA (Chemistry)</option>
@@ -547,8 +547,8 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
       <h2>🤝 Arrival Facilitation</h2>
       <div class="grid">
         <div class="full">
-          <label>🤝 Facilitation Ensured By *</label>
-          <select name="facilitationBy" class="facilitator-select" data-facilitator-select="true" required>
+          <label>🤝 Facilitation Ensured By</label>
+          <select name="facilitationBy" class="facilitator-select" data-facilitator-select="true">
             <option value="">-- Select Facilitator --</option>
             <option>Mrs. Seema Mishra</option>
             <option>Mrs. Deepa Dilawari</option>
@@ -569,9 +569,9 @@ button.action{border:0;border-radius:11px;padding:13px 19px;font-size:15px;font-
           <p id="facilitatorContactNote" class="note" style="margin:8px 0 0">The WhatsApp option will appear when a verified mobile number is added to the facilitator contact list.</p>
         </div>
         <div class="full">
-          <label>🕐 Choose Time Slot for Participants' Arrival Facilitation *</label>
+          <label>🕐 Choose Time Slot for Participants' Arrival Facilitation</label>
           <div class="slot-grid">
-            <label class="slot"><input type="radio" name="facilitationSlot" value="10 - 12 AM" required>10 - 12 AM</label>
+            <label class="slot"><input type="radio" name="facilitationSlot" value="10 - 12 AM">10 - 12 AM</label>
             <label class="slot"><input type="radio" name="facilitationSlot" value="12 Noon - 2 PM">12 Noon - 2 PM</label>
             <label class="slot"><input type="radio" name="facilitationSlot" value="2 - 4 PM">2 - 4 PM</label>
             <label class="slot"><input type="radio" name="facilitationSlot" value="4 - 6 PM">4 - 6 PM</label>
@@ -1144,7 +1144,7 @@ function inferState(address, region, name){
   if(/\bPORT\s+BLAIR\b/i.test(t)) return "Andaman and Nicobar Islands";
   if(/\bSILVASSA\b|\bDAMAN\b/i.test(t)) return "Dadra and Nagar Haveli and Daman and Diu";
 
-  // 5. Last-resort regional fallback so the required field is never left blank.
+  // 5. Last-resort regional fallback so the field is never left blank.
   const r=String(region||"").trim().toUpperCase();
   if(r==="" && /\bNEPAL\b/i.test(raw)) return "Nepal";
   if(r==="" && /\bRUSSIA\b|\bMOSCOW\b/i.test(raw)) return "Russia";
@@ -1270,10 +1270,6 @@ function updateHostelOccupancyLogic(){
   const local = isLocalParticipantField.value;
   localHostelWrap.style.display = local === "YES" ? "" : "none";
   nonLocalHostelWrap.style.display = local === "NO" ? "" : "none";
-
-  localHostelOccupiedField.required = local === "YES";
-  nonLocalHostelOccupiedField.required = local === "NO";
-
   if(local !== "YES") localHostelOccupiedField.value = "";
   if(local !== "NO") nonLocalHostelOccupiedField.value = "";
 
@@ -1284,7 +1280,6 @@ function updateHostelOccupancyLogic(){
                       (local === "NO" && nonLocalHostelOccupiedField.value === "NO");
 
   noPaymentReasonWrap.style.display = notOccupied ? "" : "none";
-  noPaymentReasonField.required = notOccupied;
   if(!notOccupied) noPaymentReasonField.value = "";
 
   calculateHostelPayment();
@@ -1414,14 +1409,14 @@ document.getElementById("form").addEventListener("submit", async function(e) {
     for (let i = 3; i < pixels.length; i += 4) if (pixels[i] > 0) return true;
     return false;
   }
-  if (!participantCanvas || !participantSignatureInput ||
-      typeof participantCanvas.toDataURL !== "function" ||
-      !canvasHasInk(participantCanvas)) {
-    status.className = "status err"; status.style.display = "block";
-    status.textContent = "✍️ Please provide the Participant signature.";
-    return;
-  }
-  participantSignatureInput.value = participantCanvas.toDataURL("image/png");
+  // Participant signature is optional. Capture it only when the participant has signed.
+  participantSignatureInput.value =
+    participantCanvas &&
+    participantSignatureInput &&
+    typeof participantCanvas.toDataURL === "function" &&
+    canvasHasInk(participantCanvas)
+      ? participantCanvas.toDataURL("image/png")
+      : "";
 
   const data = Object.fromEntries(new FormData(form).entries());
   // The retired Team ZIET arrival-time-sharing question is not collected; keep its legacy sheet column blank.
