@@ -16,10 +16,18 @@ const MAX_OTP_ATTEMPTS = 5;
  * Receives public-directory correction requests and updates the matched master participant row.
  */
 function doPost(e) {
+  let p = null;
   try {
     const payloadText = e && e.parameter ? String(e.parameter.payload || "") : "";
     if (!payloadText) throw new Error("No correction details were received.");
-    const p = JSON.parse(payloadText);
+    p = JSON.parse(payloadText);
+    if (p.action === "submitArrivalForm") {
+      const result = saveArrivalFormSubmission_(p);
+      CacheService.getScriptCache().put("arrival-submission-status-" + String(p.requestId || ""),
+        JSON.stringify({status:"success",message:result.message,row:result.row,sheetName:result.sheetName}), 600);
+      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+    }
+    if (p.action === "saveArrivalPdf") { const saved=saveArrivalFormPdf_(p); return ContentService.createTextOutput(JSON.stringify(saved)).setMimeType(ContentService.MimeType.JSON); }
     const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
     const {ss,sh} = mainSheet_();
     const c = columns_(sh);
@@ -80,11 +88,18 @@ function doPost(e) {
     log.appendRow([new Date(),clean(p.participantId),clean(p.previousSalutationEn),oldName,clean(p.previousSalutationHi),oldHindi,oldSchool,clean(p.previousSchoolHi),clean(p.previousJoiningYear),clean(p.salutationEn),clean(p.name),clean(p.salutationHi),clean(p.hi),clean(p.school),clean(p.schoolHi),year,"Automatically updated master sheet",rowNumber]);
     return ContentService.createTextOutput("Correction saved directly to the master sheet.").setMimeType(ContentService.MimeType.TEXT);
   } catch (err) {
-    return ContentService.createTextOutput("Correction could not be saved: " + String(err.message || err)).setMimeType(ContentService.MimeType.TEXT);
+    const message=String(err && err.message || err);
+    if(p && p.requestId && p.action==="submitArrivalForm") CacheService.getScriptCache().put("arrival-submission-status-"+String(p.requestId),JSON.stringify({status:"error",message:message}),600);
+    if(p && p.requestId && p.action==="saveArrivalPdf") CacheService.getScriptCache().put("arrival-pdf-status-"+String(p.requestId),JSON.stringify({status:"error",message:message}),600);
+    return ContentService.createTextOutput(JSON.stringify({ok:false,error:message})).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function doGet(e) {
+  const action = e && e.parameter ? String(e.parameter.action || "") : "";
+  if (action === "checkSubmission") return checkArrivalSubmissionStatus_(e);
+  if (action === "checkDrivePdf") return checkArrivalPdfStatus_(e);
+  if (action === "checkDriveAccess") return ContentService.createTextOutput(JSON.stringify(checkArrivalDriveAccess_())).setMimeType(ContentService.MimeType.JSON);
   const page = e && e.parameter ? String(e.parameter.page || "") : "";
   if (page === "participants") {
     return publicParticipantsJsonp_(e);
@@ -180,60 +195,7 @@ function publicParticipantsJsonp_(e) {
 
 /** Save arrival and departure planning independently of hostel room preferences. */
 function submitArrivalFacilitation(data) {
-  const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
-  const name=clean(data.name), employeeCode=clean(data.employeeCode), email=clean(data.email);
-  const arrivalMode=clean(data.arrivalMode), flightTerminal=clean(data.flightTerminal);
-  const trainTerminal=clean(data.trainTerminal), otherStation=clean(data.otherStation), busArrival=clean(data.busArrival);
-  const arrivalMumbaiTime=clean(data.arrivalMumbaiTime), arrivalHostelTime=clean(data.arrivalHostelTime);
-  const arrivalHostelBlock=clean(data.arrivalHostelBlock), departureDate=clean(data.departureDate);
-  const departureTime=clean(data.departureTime), packedDinner=clean(data.packedDinner);
-  const relievingOrderBase64=String(data.relievingOrderBase64||"");
-  const relievingOrderMime=String(data.relievingOrderMime||"");
-  const relievingOrderName=String(data.relievingOrderName||"Relieving_Order.jpg").replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,100);
-  if(!name || !employeeCode || !email) throw new Error("Please select your participant record.");
-  if(!["Train","Flight","Bus"].includes(arrivalMode)) throw new Error("Please select your mode of arrival.");
-  if(arrivalMode==="Flight" && !["CSMIA-T1","CSMIA-T2","NMIA"].includes(flightTerminal)) throw new Error("Please select your airport terminal.");
-  if(arrivalMode==="Train" && !["Bandra Terminus","Dadar","Mumbai Central","Borivali","CSMT","Thane","Any other"].includes(trainTerminal)) throw new Error("Please select your railway station.");
-  if(arrivalMode==="Train" && trainTerminal==="Any other" && !otherStation) throw new Error("Please specify the other station.");
-  if(arrivalMode==="Bus" && !busArrival) throw new Error("Please enter your bus arrival point.");
-  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalMumbaiTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalHostelTime)) throw new Error("Please select both arrival times.");
-  if(!["A1","A2","A3"].includes(arrivalHostelBlock)) throw new Error("Please select the hostel block for arrival.");
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(departureDate)) throw new Error("Please select your expected departure date.");
-  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(departureTime)) throw new Error("Please select your expected departure time.");
-  if(!["YES","NO"].includes(packedDinner)) throw new Error("Please select YES or NO for the packed dinner parcel.");
-  const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
-  const isMumbai = String(data.region || "").toLowerCase() === "mumbai";
-  const tab = isMumbai ? "Arrival Facilitation - Mumbai" : "Arrival Facilitation";
-  let sh=ss.getSheetByName(tab);
-  const headers=["Region","Timestamp","Full Name","Employee Code","Email","Arrival Mode","Airport Terminal","Railway Station","Other Railway Station","Bus Arrival Point","Expected Arrival Time in Mumbai","Expected Arrival Time at ZIET Hostel","Arrival Hostel Block","Expected Day of Departure","Expected Time of Departure from ZIET Hostel","Packed Dinner Parcel","Relieving Order Photo"];
-  if(!sh){sh=ss.insertSheet(tab);sh.appendRow(headers);sh.setFrozenRows(1);}
-  else if(sh.getLastRow()===0){sh.appendRow(headers);sh.setFrozenRows(1);}
-  let currentHeaders=sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).getDisplayValues()[0].map(v=>String(v||"").trim());
-  headers.forEach(h=>{if(!currentHeaders.includes(h)){currentHeaders.push(h);sh.getRange(1,currentHeaders.length).setValue(h);}});
-  let relievingOrderUrl="";
-  if(relievingOrderBase64){
-    if(!/^image\\/(jpeg|png|webp)$/.test(relievingOrderMime)) throw new Error("Relieving order must be captured as a JPEG, PNG or WEBP image.");
-    if(relievingOrderBase64.length>16*1024*1024) throw new Error("Relieving order photo is too large. Please retake a smaller image.");
-    const bytes=Utilities.base64Decode(relievingOrderBase64);
-    const blob=Utilities.newBlob(bytes,relievingOrderMime,relievingOrderName);
-    const photoFolder=DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT");
-    const photoFile=photoFolder.createFile(blob).setName("Relieving_Order_"+employeeCode+"_"+new Date().getTime()+"."+({ "image/jpeg":"jpg","image/png":"png","image/webp":"webp"}[relievingOrderMime]));
-    photoFile.setDescription("Mobile-captured relieving order for "+name+" ("+employeeCode+").");
-    relievingOrderUrl=photoFile.getUrl();
-  }
-  const record={"Region":isMumbai?"Mumbai":"Ahmedabad","Timestamp":new Date(),"Full Name":name,"Employee Code":employeeCode,"Email":email,"Arrival Mode":arrivalMode,"Airport Terminal":arrivalMode==="Flight"?flightTerminal:"","Railway Station":arrivalMode==="Train"?trainTerminal:"","Other Railway Station":arrivalMode==="Train"&&trainTerminal==="Any other"?otherStation:"","Bus Arrival Point":arrivalMode==="Bus"?busArrival:"","Expected Arrival Time in Mumbai":arrivalMumbaiTime,"Expected Arrival Time at ZIET Hostel":arrivalHostelTime,"Arrival Hostel Block":arrivalHostelBlock,"Expected Day of Departure":departureDate,"Expected Time of Departure from ZIET Hostel":departureTime,"Packed Dinner Parcel":packedDinner,"Relieving Order Photo":relievingOrderUrl};
-  sh.appendRow(currentHeaders.map(h=>Object.prototype.hasOwnProperty.call(record,h)?record[h]:""));
-  const arrivalLines="Mode: "+arrivalMode+(arrivalMode==="Flight"?"\\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\\nBus arrival point: "+busArrival:"")+"\\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\\nArrival hostel block: "+arrivalHostelBlock;
-  const pdfText = "ZIET MUMBAI — KVS AHMEDABAD REGION\nARRIVAL FACILITATION & DEPARTURE PLAN\n\nPARTICIPANT DETAILS\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\n\nARRIVAL DETAILS\nMode: "+arrivalMode+(arrivalMode==="Flight"?"\nAirport terminal: "+flightTerminal:"")+(arrivalMode==="Train"?"\nRailway station: "+trainTerminal+(trainTerminal==="Any other"?" — "+otherStation:""):"")+(arrivalMode==="Bus"?"\nBus arrival point: "+busArrival:"")+"\nExpected arrival in Mumbai: "+arrivalMumbaiTime+"\nExpected arrival at ZIET Hostel: "+arrivalHostelTime+"\nArrival hostel block: "+arrivalHostelBlock+"\n\nDEPARTURE DETAILS\nExpected day of departure: "+departureDate+"\nExpected departure time from ZIET Hostel: "+departureTime+"\nPacked Dinner Parcel: "+packedDinner+"\n\nFor further assistance: Anand Srivastava (Coordinator).";
-  const tempDoc = DocumentApp.create("Arrival Plan - "+name+" - "+employeeCode);  tempDoc.getBody().setText(pdfText);
-  tempDoc.saveAndClose();
-  const pdfBlob = DriveApp.getFileById(tempDoc.getId()).getAs(MimeType.PDF).setName("Arrival_Departure_"+employeeCode+"_"+departureDate+".pdf");
-  const arrivalFolder = DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT");
-  const arrivalPdf = arrivalFolder.createFile(pdfBlob);
-  arrivalPdf.setDescription("Arrival and departure plan for "+name+" ("+employeeCode+").");
-  DriveApp.getFileById(tempDoc.getId()).setTrashed(true);
-  MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Arrival & Departure Plan — "+name,body:"A separate Arrival Facilitation and Departure Plan was submitted.\\n\\nName: "+name+"\\nEmployee Code: "+employeeCode+"\\nEmail: "+email+"\\n\\nARRIVAL DETAILS\\n"+arrivalLines+"\\n\\nDEPARTURE DETAILS\\nExpected day of departure: "+departureDate+"\\nExpected departure time from ZIET Hostel: "+departureTime+"\\nPacked Dinner Parcel on last workshop day: "+packedDinner+"\\n\\nFor further assistance: Anand Srivastava (Coordinator)."});
-  return {ok:true,message:"Arrival and departure plan submitted successfully. "+(relievingOrderUrl?"Relieving order photo uploaded successfully. ":"")+"A PDF copy has been saved to the designated Drive folder."};
+  return saveArrivalFormSubmission_(data || {});
 }
 
 function normalized_(v) {
