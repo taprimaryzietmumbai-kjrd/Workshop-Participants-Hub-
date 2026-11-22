@@ -931,3 +931,20 @@ function downloadCpdCertificate(token) {
     message:"Certificate retrieved successfully."
   };
 }
+
+/**
+ * One-time owner-run check for the Arrival PDF destination.
+ * Run from the Apps Script editor as taprimaryzietmumbai@gmail.com.
+ */
+function authorizeArrivalDriveAccess() {
+  const folder = DriveApp.getFolderById("1sl9U0-PUAq-ewjhksngzhNneXRdEU-46");
+  Logger.log("SUCCESS: " + folder.getName());
+  Logger.log("Folder ID: " + folder.getId());
+  Logger.log("Executing account: " + Session.getEffectiveUser().getEmail());
+  return {
+    authorized: true,
+    folderName: folder.getName(),
+    folderId: folder.getId(),
+    executingAccount: Session.getEffectiveUser().getEmail()
+  };
+}
