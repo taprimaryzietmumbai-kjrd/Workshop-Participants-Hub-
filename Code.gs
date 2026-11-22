@@ -268,7 +268,7 @@ function checkArrivalSubmissionStatus_(e) {
   return ContentService.createTextOutput(callback+"("+JSON.stringify(data).replace(/</g,"\\u003c")+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 function checkArrivalDriveAccess_() {
-  try { const folder=DriveApp.getFolderById("ARRIVAL_PDF_DESTINATION_FOLDER_ID"); return {status:"success",folder:folder.getName(),effectiveUser:Session.getEffectiveUser().getEmail()}; }
+  try { const folder=DriveApp.getFolderById(ARRIVAL_PDF_DESTINATION_FOLDER_ID); return {status:"success",folder:folder.getName(),effectiveUser:Session.getEffectiveUser().getEmail()}; }
   catch(err) { return {status:"error",message:String(err&&err.message||err),effectiveUser:Session.getEffectiveUser().getEmail()}; }
 }
 
@@ -297,13 +297,13 @@ function saveArrivalFormPdf_(payload) {
     fields.forEach(item=>{if(!item||typeof item!=="object")return;const label=safe(item.label),value=safe(item.value);if(!label||!value)return;body.appendParagraph(label).setBold(true);body.appendParagraph(value);});
     doc.saveAndClose();
     const blob=DriveApp.getFileById(doc.getId()).getAs(MimeType.PDF).setName(docName+".pdf");
-    const folder=DriveApp.getFolderById("ARRIVAL_PDF_DESTINATION_FOLDER_ID");
+    const folder=DriveApp.getFolderById(ARRIVAL_PDF_DESTINATION_FOLDER_ID);
     const file=folder.createFile(blob);
     file.setDescription("Completed ZIET Mumbai Arrival & Departure Form for "+participant+(employeeCode?" ("+employeeCode+")":""));
     DriveApp.getFileById(doc.getId()).setTrashed(true);
     const url=file.getUrl();
     MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"ZIET Mumbai — Arrival Form PDF saved to Google Drive — "+participant,
-      body:"A participant Arrival & Departure Form PDF has been saved to the designated Google Drive folder.\n\nParticipant: "+participant+"\nEmployee Code: "+employeeCode+"\nWorkshop: "+workshop+"\n\nPDF: "+url+"\n\nDrive folder: https://drive.google.com/drive/folders/"+ARRIVAL_PDF_DESTINATION_FOLDER_ID+""});
+      body:"A participant Arrival & Departure Form PDF has been saved to the designated Google Drive folder.\n\nParticipant: "+participant+"\nEmployee Code: "+employeeCode+"\nWorkshop: "+workshop+"\n\nPDF: "+url+"\n\nDrive folder: https://drive.google.com/drive/folders/"+ARRIVAL_PDF_DESTINATION_FOLDER_ID});
     const result={status:"saved",url:url,message:"PDF saved and coordinator notified."};
     cache.put(key,JSON.stringify(result),600);return result;
   } catch(err) { cache.put(key,JSON.stringify({status:"error",message:String(err&&err.message||err)}),600);throw err; }
