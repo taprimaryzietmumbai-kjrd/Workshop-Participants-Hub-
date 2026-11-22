@@ -297,7 +297,7 @@ function checkArrivalSubmissionStatus_(e) {
   return ContentService.createTextOutput(callback+"("+JSON.stringify(data).replace(/</g,"\\u003c")+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 function checkArrivalDriveAccess_() {
-  try { const folder=DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT"); return {status:"success",folder:folder.getName(),effectiveUser:Session.getEffectiveUser().getEmail()}; }
+  try { const folder=DriveApp.getFolderById("1sl9U0-PUAq-ewjhksngzhNneXRdEU-46"); return {status:"success",folder:folder.getName(),effectiveUser:Session.getEffectiveUser().getEmail()}; }
   catch(err) { return {status:"error",message:String(err&&err.message||err),effectiveUser:Session.getEffectiveUser().getEmail()}; }
 }
 
@@ -307,7 +307,7 @@ function checkArrivalDriveAccess_() {
  * It triggers the required Drive, Docs and Mail authorisation and verifies the destination folder.
  */
 function authorizeArrivalDriveAccess() {
-  const folder = DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT");
+  const folder = DriveApp.getFolderById("1sl9U0-PUAq-ewjhksngzhNneXRdEU-46");
   const folderName = folder.getName();
   const temp = DocumentApp.create("ZIET_Arrival_Authorization_Check");
   const docId = temp.getId();
@@ -348,13 +348,13 @@ function saveArrivalFormPdf_(payload) {
     fields.forEach(item=>{if(!item||typeof item!=="object")return;const label=safe(item.label),value=safe(item.value);if(!label||!value)return;body.appendParagraph(label).setBold(true);body.appendParagraph(value);});
     doc.saveAndClose();
     const blob=DriveApp.getFileById(doc.getId()).getAs(MimeType.PDF).setName(docName+".pdf");
-    const folder=DriveApp.getFolderById("11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT");
+    const folder=DriveApp.getFolderById("1sl9U0-PUAq-ewjhksngzhNneXRdEU-46");
     const file=folder.createFile(blob);
     file.setDescription("Completed ZIET Mumbai Arrival & Departure Form for "+participant+(employeeCode?" ("+employeeCode+")":""));
     DriveApp.getFileById(doc.getId()).setTrashed(true);
     const url=file.getUrl();
     MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"ZIET Mumbai — Arrival Form PDF saved to Google Drive — "+participant,
-      body:"A participant Arrival & Departure Form PDF has been saved to the designated Google Drive folder.\n\nParticipant: "+participant+"\nEmployee Code: "+employeeCode+"\nWorkshop: "+workshop+"\n\nPDF: "+url+"\n\nDrive folder: https://drive.google.com/drive/folders/11V4nKSttjV_knMP-AiO1dC8AIR_oBFnT"});
+      body:"A participant Arrival & Departure Form PDF has been saved to the designated Google Drive folder.\n\nParticipant: "+participant+"\nEmployee Code: "+employeeCode+"\nWorkshop: "+workshop+"\n\nPDF: "+url+"\n\nDrive folder: https://drive.google.com/drive/folders/1sl9U0-PUAq-ewjhksngzhNneXRdEU-46"});
     const result={status:"saved",url:url,message:"PDF saved and coordinator notified."};
     cache.put(key,JSON.stringify(result),600);return result;
   } catch(err) { cache.put(key,JSON.stringify({status:"error",message:String(err&&err.message||err)}),600);throw err; }
