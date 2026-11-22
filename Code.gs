@@ -18,7 +18,9 @@ const MAX_OTP_ATTEMPTS = 5;
 function doPost(e) {
   let p = null;
   try {
-    const payloadText = e && e.parameter ? String(e.parameter.payload || "") : "";
+    const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
+    const parameterPayload = e && e.parameter ? String(e.parameter.payload || "") : "";
+    const payloadText = rawBody.trim().charAt(0) === "{" ? rawBody : parameterPayload;
     if (!payloadText) throw new Error("No correction details were received.");
     p = JSON.parse(payloadText);
     if (p.action === "submitArrivalForm") {
@@ -196,6 +198,122 @@ function publicParticipantsJsonp_(e) {
 /** Save arrival and departure planning independently of hostel room preferences. */
 function submitArrivalFacilitation(data) {
   return saveArrivalFormSubmission_(data || {});
+}
+
+
+/** Save all Arrival.html fields to the region response sheet; every field is optional. */
+function saveArrivalFormSubmission_(payload) {
+  payload = payload || {};
+  const requestId = String(payload.requestId || Utilities.getUuid()).replace(/[^a-zA-Z0-9_-]/g,"").slice(0,120);
+  const isMumbai = String(payload.region || "").toLowerCase().indexOf("mumbai") !== -1;
+  const sheetName = isMumbai ? "Arrival Facilitation - Mumbai" : "Arrival Facilitation";
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sh = ss.getSheetByName(sheetName);
+  if (!sh) sh = ss.insertSheet(sheetName);
+  const labels = {
+    applicantName:"Full Name",name:"Full Name",employeeCode:"Employee Code",email:"Email",designation:"Designation",
+    region:"Region",kvName:"Kendriya Vidyalaya",state:"State / UT",officeAddress:"KV Address",
+    officePhone:"KV Office Phone",residencePhone:"Residence Phone",mobile:"Mobile Number",purpose:"Purpose of Visit",
+    participant:"Hostel Allottee / Arriving Participant",block:"Hostel Block",room:"Room Number",
+    arrivalDate:"Expected Date of Arrival",arrivalTime:"Expected Time of Arrival",actualArrival:"Actual Check-in",
+    departureDate:"Expected Date of Departure",departureTime:"Expected Time of Departure",actualCheckout:"Actual Check-out",
+    isLocalParticipant:"Local Participant",localHostelOccupied:"Local Participant Hostel Occupied",
+    nonLocalHostelOccupied:"Non-local Participant Hostel Occupied",noPaymentReason:"Reason for No Payment",
+    arrived:"Whether Arrived",checkedIn:"Checked In to Allotted Room",daysStayed:"Number of Days Stayed",
+    roomOccupancy:"Room Occupancy",hostelRatePerDay:"Hostel Rate Per Day",finalHostelAmount:"Final Hostel Amount",
+    course:"Course Name",coordinator:"Course Coordinator",facilitationBy:"Facilitation Ensured By",
+    facilitationSlot:"Arrival Facilitation Time Slot",remarks:"Remarks",arrivalMode:"Arrival Mode",
+    flightTerminal:"Airport Terminal",trainTerminal:"Railway Station",otherStation:"Other Railway Station",
+    busArrival:"Bus Arrival Point",arrivalMumbaiTime:"Expected Arrival Time in Mumbai",
+    arrivalHostelTime:"Expected Arrival Time at ZIET Hostel",arrivalHostelBlock:"Arrival Hostel Block",
+    packedDinner:"Packed Dinner Parcel"
+  };
+  const values = {};
+  Object.keys(payload).forEach(key => {
+    if (["action","requestId","participantSignature","shared"].includes(key)) return;
+    const value = payload[key];
+    if (value === undefined || value === null || typeof value === "object") return;
+    let label = labels[key] || key.replace(/([A-Z])/g," $1").replace(/^./,c=>c.toUpperCase()).trim();
+    const family = key.match(/^family(Name|Sex|Relation|Age|KvsStatus)(\d+)$/);
+    if (family) label = "Family Member " + family[2] + " — " + ({Name:"Name",Sex:"Sex",Relation:"Relationship",Age:"Age",KvsStatus:"KVS Status"}[family[1]]);
+    values[label] = String(value).trim();
+  });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    let headers = sh.getLastColumn() ? sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(v=>String(v||"").trim()) : [];
+    if (!headers.some(Boolean)) headers = [];
+    ["Timestamp","Submission Request ID"].forEach(h=>{if(!headers.includes(h))headers.push(h);});
+    Object.keys(values).forEach(h=>{if(!headers.includes(h))headers.push(h);});
+    sh.getRange(1,1,1,headers.length).setValues([headers]);
+    const requestCol=headers.indexOf("Submission Request ID")+1;
+    if(requestId && sh.getLastRow()>1){
+      const prior=sh.getRange(2,requestCol,sh.getLastRow()-1,1).getDisplayValues();
+      for(let i=0;i<prior.length;i++) if(String(prior[i][0])===requestId)
+        return {ok:true,status:"success",message:"This submission was already saved; no duplicate row was created.",row:i+2,sheetName:sheetName};
+    }
+    const record={"Timestamp":new Date(),"Submission Request ID":requestId};
+    Object.keys(values).forEach(h=>record[h]=values[h]);
+    sh.appendRow(headers.map(h=>Object.prototype.hasOwnProperty.call(record,h)?record[h]:""));
+    return {ok:true,status:"success",message:"Arrival form saved successfully to Google Sheets.",row:sh.getLastRow(),sheetName:sheetName};
+  } finally { lock.releaseLock(); }
+}
+function checkArrivalSubmissionStatus_(e) {
+  const callback=String(e&&e.parameter&&e.parameter.callback||"");
+  if(!/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) return ContentService.createTextOutput("Invalid callback").setMimeType(ContentService.MimeType.TEXT);
+  const id=String(e&&e.parameter&&e.parameter.requestId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,120);
+  const raw=id?CacheService.getScriptCache().get("arrival-submission-status-"+id):"";
+  const data=raw?JSON.parse(raw):{status:"pending"};
+  return ContentService.createTextOutput(callback+"("+JSON.stringify(data).replace(/</g,"\\u003c")+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+function checkArrivalDriveAccess_() {
+  try { const folder=DriveApp.getFolderById("1sl9U0-PUAq-ewjhksngzhNneXRdEU-46"); return {status:"success",folder:folder.getName(),effectiveUser:Session.getEffectiveUser().getEmail()}; }
+  catch(err) { return {status:"error",message:String(err&&err.message||err),effectiveUser:Session.getEffectiveUser().getEmail()}; }
+}
+
+function saveArrivalFormPdf_(payload) {
+  const requestId=String(payload.requestId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,100);
+  if(!requestId) throw new Error("Missing PDF request ID.");
+  const cache=CacheService.getScriptCache(), key="arrival-pdf-status-"+requestId;
+  cache.put(key,JSON.stringify({status:"processing"}),600);
+  try {
+    const fields=Array.isArray(payload.fields)?payload.fields:[];
+    const participant=String(payload.participantName||"Participant").trim().slice(0,150);
+    const employeeCode=String(payload.employeeCode||"").trim().slice(0,80);
+    const workshop=String(payload.workshop||"").trim().slice(0,200);
+    const safe=v=>String(v==null?"":v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").slice(0,2000);
+    const stamp=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"yyyy-MM-dd_HHmm");
+    const docName="ZIET_Arrival_Form_"+(employeeCode||participant).replace(/[^a-zA-Z0-9_-]/g,"_")+"_"+stamp;
+    const doc=DocumentApp.create(docName), body=doc.getBody();
+    body.appendParagraph("KENDRIYA VIDYALAYA SANGATHAN").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph("ZONAL INSTITUTE OF EDUCATION & TRAINING, MUMBAI").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph("PARTICIPANT ARRIVAL & DEPARTURE FORM").setHeading(DocumentApp.ParagraphHeading.TITLE);
+    body.appendParagraph("Participant: "+participant);
+    if(employeeCode)body.appendParagraph("Employee Code: "+employeeCode);
+    if(workshop)body.appendParagraph("Workshop: "+workshop);
+    body.appendParagraph("Generated: "+Utilities.formatDate(new Date(),Session.getScriptTimeZone(),"dd MMM yyyy, hh:mm a"));
+    body.appendHorizontalRule();
+    fields.forEach(item=>{if(!item||typeof item!=="object")return;const label=safe(item.label),value=safe(item.value);if(!label||!value)return;body.appendParagraph(label).setBold(true);body.appendParagraph(value);});
+    doc.saveAndClose();
+    const blob=DriveApp.getFileById(doc.getId()).getAs(MimeType.PDF).setName(docName+".pdf");
+    const folder=DriveApp.getFolderById("1sl9U0-PUAq-ewjhksngzhNneXRdEU-46");
+    const file=folder.createFile(blob);
+    file.setDescription("Completed ZIET Mumbai Arrival & Departure Form for "+participant+(employeeCode?" ("+employeeCode+")":""));
+    DriveApp.getFileById(doc.getId()).setTrashed(true);
+    const url=file.getUrl();
+    MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"ZIET Mumbai — Arrival Form PDF saved to Google Drive — "+participant,
+      body:"A participant Arrival & Departure Form PDF has been saved to the designated Google Drive folder.\n\nParticipant: "+participant+"\nEmployee Code: "+employeeCode+"\nWorkshop: "+workshop+"\n\nPDF: "+url+"\n\nDrive folder: https://drive.google.com/drive/folders/1sl9U0-PUAq-ewjhksngzhNneXRdEU-46"});
+    const result={status:"saved",url:url,message:"PDF saved and coordinator notified."};
+    cache.put(key,JSON.stringify(result),600);return result;
+  } catch(err) { cache.put(key,JSON.stringify({status:"error",message:String(err&&err.message||err)}),600);throw err; }
+}
+function checkArrivalPdfStatus_(e) {
+  const callback=String(e&&e.parameter&&e.parameter.callback||"");
+  if(!/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback))return ContentService.createTextOutput("Invalid callback").setMimeType(ContentService.MimeType.TEXT);
+  const id=String(e&&e.parameter&&e.parameter.requestId||"").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,100);
+  const raw=id?CacheService.getScriptCache().get("arrival-pdf-status-"+id):"";
+  const data=raw?JSON.parse(raw):{status:"pending"};
+  return ContentService.createTextOutput(callback+"("+JSON.stringify(data).replace(/</g,"\\u003c")+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
 function normalized_(v) {
