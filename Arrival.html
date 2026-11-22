@@ -1423,9 +1423,10 @@ async function saveFormPdfToDrive() {
     }
   });
 
-  const participant = (document.getElementById("participant") || {}).value || "";
-  const employeeCode = (document.getElementById("employeeCode") || {}).value || "";
-  const workshop = (document.getElementById("courseName") || {}).value || "";
+  const formData = Object.fromEntries(new FormData(form).entries());
+  const participant = formData.participant || formData.applicantName || formData.fullName || formData.name || "";
+  const employeeCode = formData.employeeCode || formData.empCode || "";
+  const workshop = formData.course || formData.trainingProgramme || formData.courseName || "";
   const requestId = "arrival-pdf-" + Date.now() + "-" + Math.random().toString(36).slice(2,10);
 
   button.disabled = true;
