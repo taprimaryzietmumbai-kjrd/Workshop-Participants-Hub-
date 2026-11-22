@@ -280,7 +280,7 @@ function saveArrivalFormPdf_(payload) {
     const participant = String(payload.participantName || "Participant").trim().slice(0,150);
     const employeeCode = String(payload.employeeCode || "").trim().slice(0,80);
     const workshop = String(payload.workshop || "").trim().slice(0,200);
-    const safe = v => String(v == null ? "" : v).replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g,"").slice(0,2000);
+    const safe = v => String(v == null ? "" : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").slice(0,2000);
     const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HHmm");
     const docName = "ZIET_Arrival_Form_" + (employeeCode || participant).replace(/[^a-zA-Z0-9_-]/g,"_") + "_" + stamp;
     const doc = DocumentApp.create(docName);
