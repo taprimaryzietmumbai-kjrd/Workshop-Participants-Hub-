@@ -32,12 +32,6 @@ function doPost(e) {
       );
       return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
     }
-    if (p.action === "submitArrivalForm") {
-      const result = saveArrivalFormSubmission_(p);
-      CacheService.getScriptCache().put("arrival-submission-status-" + String(p.requestId || ""),
-        JSON.stringify({status:"success",message:result.message,row:result.row,sheetName:result.sheetName}), 600);
-      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-    }
     if (p.action === "saveArrivalPdf") {
       const saved = saveArrivalFormPdf_(p);
       return ContentService.createTextOutput(JSON.stringify(saved)).setMimeType(ContentService.MimeType.JSON);
