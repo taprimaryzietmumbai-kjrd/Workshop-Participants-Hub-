@@ -17,9 +17,14 @@ const MAX_OTP_ATTEMPTS = 5;
  */
 function doPost(e) {
   try {
-    const payloadText = e && e.parameter ? String(e.parameter.payload || "") : "";
-    if (!payloadText) throw new Error("No correction details were received.");
+    const rawBody = e && e.postData && e.postData.contents ? String(e.postData.contents) : "";
+    const payloadText = rawBody || (e && e.parameter ? String(e.parameter.payload || "") : "");
+    if (!payloadText) throw new Error("No request details were received.");
     const p = JSON.parse(payloadText);
+    if (p.action === "saveArrivalPdf") {
+      const saved = saveArrivalFormPdf_(p);
+      return ContentService.createTextOutput(JSON.stringify(saved)).setMimeType(ContentService.MimeType.JSON);
+    }
     const clean = v => String(v == null ? "" : v).trim().slice(0, 500);
     const {ss,sh} = mainSheet_();
     const c = columns_(sh);
@@ -85,6 +90,8 @@ function doPost(e) {
 }
 
 function doGet(e) {
+  const action = e && e.parameter ? String(e.parameter.action || "") : "";
+  if (action === "checkDrivePdf") return checkArrivalPdfStatus_(e);
   const page = e && e.parameter ? String(e.parameter.page || "") : "";
   if (page === "participants") {
     return publicParticipantsJsonp_(e);
@@ -255,6 +262,88 @@ function submitArrivalFacilitation(data) {
   MailApp.sendEmail({to:"taprimaryzietmumbai@gmail.com",subject:"Arrival & Departure Plan — "+region+" — "+name,body:"A separate Arrival Facilitation and Departure Plan was submitted.\n\nName: "+name+"\nEmployee Code: "+employeeCode+"\nEmail: "+email+"\n\nARRIVAL DETAILS\n"+arrivalLines+"\n\nDEPARTURE DETAILS\nExpected day of departure: "+departureDate+"\nExpected departure time from ZIET Hostel: "+departureTime+"\nPacked Dinner Parcel on last workshop day: "+packedDinner+"\nRelieving Order Photo: "+(relievingOrderUrl||"Not uploaded")+"\n\nFor further assistance: Anand Srivastava (Coordinator)."});
   return {ok:true,message:"Arrival and departure plan submitted successfully. "+(relievingOrderUrl?"Relieving order photo uploaded successfully. ":"")+"A PDF copy has been saved to the designated Drive folder."};
 }
+
+
+/**
+ * Save a completed Arrival Form as a PDF in the ZIET Mumbai shared Drive folder
+ * and email the coordinator a link. The web app must execute as the Drive owner
+ * (econtentzietmumbai@gmail.com) or an account with Editor access to that folder.
+ */
+function saveArrivalFormPdf_(payload) {
+  const requestId = String(payload.requestId || "").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,100);
+  if (!requestId) throw new Error("Missing PDF request ID.");
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "arrival-pdf-status-" + requestId;
+  cache.put(cacheKey, JSON.stringify({status:"processing"}), 600);
+  try {
+    const fields = Array.isArray(payload.fields) ? payload.fields : [];
+    const participant = String(payload.participantName || "Participant").trim().slice(0,150);
+    const employeeCode = String(payload.employeeCode || "").trim().slice(0,80);
+    const workshop = String(payload.workshop || "").trim().slice(0,200);
+    const safe = v => String(v == null ? "" : v).replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g,"").slice(0,2000);
+    const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HHmm");
+    const docName = "ZIET_Arrival_Form_" + (employeeCode || participant).replace(/[^a-zA-Z0-9_-]/g,"_") + "_" + stamp;
+    const doc = DocumentApp.create(docName);
+    const body = doc.getBody();
+    body.appendParagraph("KENDRIYA VIDYALAYA SANGATHAN").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph("ZONAL INSTITUTE OF EDUCATION & TRAINING, MUMBAI").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph("PARTICIPANT ARRIVAL & DEPARTURE FORM").setHeading(DocumentApp.ParagraphHeading.TITLE);
+    body.appendParagraph("Participant: " + participant);
+    if (employeeCode) body.appendParagraph("Employee Code: " + employeeCode);
+    if (workshop) body.appendParagraph("Workshop: " + workshop);
+    body.appendParagraph("Generated: " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd MMM yyyy, hh:mm a"));
+    body.appendHorizontalRule();
+    fields.forEach(function(item) {
+      if (!item || typeof item !== "object") return;
+      const label = safe(item.label);
+      const value = safe(item.value);
+      if (!label || !value) return;
+      const p = body.appendParagraph(label);
+      p.setBold(true);
+      body.appendParagraph(value);
+    });
+    doc.saveAndClose();
+
+    const pdfName = docName + ".pdf";
+    const pdfBlob = DriveApp.getFileById(doc.getId()).getAs(MimeType.PDF).setName(pdfName);
+    const folder = DriveApp.getFolderById("1sl9U0-PUAq-ewjhksngzhNneXRdEU-46");
+    const pdfFile = folder.createFile(pdfBlob);
+    pdfFile.setDescription("Completed ZIET Mumbai Arrival & Departure Form for " + participant + (employeeCode ? " (" + employeeCode + ")" : ""));
+    DriveApp.getFileById(doc.getId()).setTrashed(true);
+    const pdfUrl = pdfFile.getUrl();
+
+    MailApp.sendEmail({
+      to:"taprimaryzietmumbai@gmail.com",
+      subject:"ZIET Mumbai — Arrival Form PDF saved to Google Drive — " + participant,
+      body:"A participant Arrival & Departure Form PDF has been saved to the designated Google Drive folder.\n\nParticipant: " + participant +
+        "\nEmployee Code: " + employeeCode +
+        "\nWorkshop: " + workshop +
+        "\n\nPDF: " + pdfUrl +
+        "\n\nDrive folder: https://drive.google.com/drive/folders/1sl9U0-PUAq-ewjhksngzhNneXRdEU-46"
+    });
+
+    const result = {status:"saved",url:pdfUrl,message:"PDF saved and coordinator notified."};
+    cache.put(cacheKey, JSON.stringify(result), 600);
+    return result;
+  } catch (err) {
+    const result = {status:"error",message:String(err && err.message || err)};
+    cache.put(cacheKey, JSON.stringify(result), 600);
+    throw err;
+  }
+}
+
+function checkArrivalPdfStatus_(e) {
+  const callback = String(e && e.parameter && e.parameter.callback || "");
+  if (!/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) {
+    return ContentService.createTextOutput("Invalid callback").setMimeType(ContentService.MimeType.TEXT);
+  }
+  const requestId = String(e && e.parameter && e.parameter.requestId || "").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,100);
+  const raw = requestId ? CacheService.getScriptCache().get("arrival-pdf-status-" + requestId) : "";
+  const data = raw ? JSON.parse(raw) : {status:"pending"};
+  return ContentService.createTextOutput(callback + "(" + JSON.stringify(data).replace(/</g,"\\u003c") + ");")
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
 
 function normalized_(v) {
   return String(v == null ? "" : v).toLowerCase().replace(/[^a-z0-9\u0900-\u097f]/g, "");
