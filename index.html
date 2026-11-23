@@ -130,11 +130,19 @@ function parseJoiningDate(value){
  const s=String(value||"").trim();
  if(!s)return null;
  let m=s.match(/^(\\d{1,2})[\\/.\\-](\\d{1,2})[\\/.\\-](\\d{4})$/);
- if(m)return new Date(Number(m[3]),Number(m[2])-1,Number(m[1])).getTime();
+ if(m){const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));return d.getFullYear()===Number(m[3])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[1])?d.getTime():null;}
  m=s.match(/^(\\d{4})[\\/.\\-](\\d{1,2})[\\/.\\-](\\d{1,2})$/);
- if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3])).getTime();
+ if(m){const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));return d.getFullYear()===Number(m[1])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[3])?d.getTime():null;}
  const d=new Date(s);
  return Number.isNaN(d.getTime())?null:d.getTime();
+}
+function joiningSortValue(person){
+ const fullDate=parseJoiningDate(person.joiningDate);
+ if(fullDate!==null)return fullDate;
+ const raw=String(person.joiningYear||"").trim();
+ const match=raw.match(/(?:19|20)\\d{2}/);
+ if(match)return new Date(Number(match[0]),0,1).getTime();
+ return null;
 }
 function downloadDirectoryPdf(sortMode){
  const previousSchool=schoolFilter.value;
@@ -142,8 +150,8 @@ function downloadDirectoryPdf(sortMode){
  schoolFilter.value="";
  const sorted=originalParticipants.slice().sort((a,b)=>{
    if(sortMode==="joining"){
-     const ad=parseJoiningDate(a.joiningDate);
-     const bd=parseJoiningDate(b.joiningDate);
+     const ad=joiningSortValue(a);
+     const bd=joiningSortValue(b);
      if(ad===null && bd===null)return stripEnglishSalutations(a.name).localeCompare(stripEnglishSalutations(b.name));
      if(ad===null)return 1;
      if(bd===null)return -1;
