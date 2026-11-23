@@ -129,19 +129,30 @@ switchRegion("mumbai");
 function parseJoiningDate(value){
  const s=String(value||"").trim();
  if(!s)return null;
- let m=s.match(/^(\\d{1,2})[\\/.\\-](\\d{1,2})[\\/.\\-](\\d{4})$/);
- if(m){const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));return d.getFullYear()===Number(m[3])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[1])?d.getTime():null;}
- m=s.match(/^(\\d{4})[\\/.\\-](\\d{1,2})[\\/.\\-](\\d{1,2})$/);
- if(m){const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));return d.getFullYear()===Number(m[1])&&d.getMonth()===Number(m[2])-1&&d.getDate()===Number(m[3])?d.getTime():null;}
- const d=new Date(s);
- return Number.isNaN(d.getTime())?null:d.getTime();
+ // Supports DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY and YYYY-MM-DD.
+ let parts=s.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/);
+ if(parts){
+   const day=Number(parts[1]),month=Number(parts[2]),year=Number(parts[3]);
+   const d=new Date(year,month-1,day);
+   return d.getFullYear()===year&&d.getMonth()===month-1&&d.getDate()===day?d.getTime():null;
+ }
+ parts=s.match(/^(\d{4})[/.\-](\d{1,2})[/.\-](\d{1,2})$/);
+ if(parts){
+   const year=Number(parts[1]),month=Number(parts[2]),day=Number(parts[3]);
+   const d=new Date(year,month-1,day);
+   return d.getFullYear()===year&&d.getMonth()===month-1&&d.getDate()===day?d.getTime():null;
+ }
+ return null;
 }
 function joiningSortValue(person){
- const fullDate=parseJoiningDate(person.joiningDate);
- if(fullDate!==null)return fullDate;
+ // The Mumbai sheet's displayed column is "Year of Joining", e.g. 1997, 2009.
+ // Compare the numeric year directly; do not rely on Date.parse("1997").
  const raw=String(person.joiningYear||"").trim();
- const match=raw.match(/(?:19|20)\\d{2}/);
- if(match)return new Date(Number(match[0]),0,1).getTime();
+ const yearMatch=raw.match(/(?:19|20)\d{2}/);
+ const year=yearMatch?Number(yearMatch[0]):null;
+ const fullDate=parseJoiningDate(person.joiningDate);
+ if(fullDate!==null)return {year:new Date(fullDate).getFullYear(),date:fullDate};
+ if(year!==null)return {year,date:new Date(year,0,1).getTime()};
  return null;
 }
 function downloadDirectoryPdf(sortMode){
@@ -155,7 +166,7 @@ function downloadDirectoryPdf(sortMode){
      if(ad===null && bd===null)return stripEnglishSalutations(a.name).localeCompare(stripEnglishSalutations(b.name));
      if(ad===null)return 1;
      if(bd===null)return -1;
-     return ad-bd || stripEnglishSalutations(a.name).localeCompare(stripEnglishSalutations(b.name));
+     return ad.year-bd.year || ad.date-bd.date || stripEnglishSalutations(a.name).localeCompare(stripEnglishSalutations(b.name));
    }
    return stripEnglishSalutations(a.name).localeCompare(stripEnglishSalutations(b.name),undefined,{sensitivity:"base"});
  });
