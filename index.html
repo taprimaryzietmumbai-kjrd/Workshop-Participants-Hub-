@@ -110,13 +110,17 @@ function render(){const list=filtered();rows.innerHTML=list.map(p=>{const enName
 participantSelect.addEventListener("change",()=>{selectEditBtn.disabled=!participantSelect.value});selectEditBtn.addEventListener("click",()=>{if(participantSelect.value)openEditor(Number(participantSelect.value))});schoolFilter.addEventListener("change",render);
 function switchRegion(region){
  activeRegion=region;
- participants=region==="mumbai"?mumbaiParticipants:ahmedabadParticipants;
+ participants=region==="mumbai"?mumbaiParticipants.slice().sort((a,b)=>{
+   const ay=Number(String(a.joiningYear||"").match(/(?:19|20)\\d{2}/)?.[0]||0);
+   const by=Number(String(b.joiningYear||"").match(/(?:19|20)\\d{2}/)?.[0]||0);
+   return by-ay || stripEnglishSalutations(a.name).localeCompare(stripEnglishSalutations(b.name),undefined,{sensitivity:"base"});
+ }):ahmedabadParticipants;
  schoolFilter.value="";participantSelect.value="";
  document.getElementById("ahmedabadTab").classList.toggle("active",region==="ahmedabad");
  document.getElementById("mumbaiTab").classList.toggle("active",region==="mumbai");
  document.getElementById("ahmedabadTab").setAttribute("aria-selected",String(region==="ahmedabad"));
  document.getElementById("mumbaiTab").setAttribute("aria-selected",String(region==="mumbai"));
- document.getElementById("directoryTitle").textContent=region==="mumbai"?"Participant Directory | प्रतिभागी सूची — PRTM Mumbai":"Participant Directory | प्रतिभागी सूची — Ahmedabad Region";
+ document.getElementById("directoryTitle").textContent=region==="mumbai"?"Participant Directory — Year of Joining (Newest to Oldest) | PRTM Mumbai":"Participant Directory | प्रतिभागी सूची — Ahmedabad Region";
  document.getElementById("regionStat").textContent=region==="mumbai"?"Mumbai":"Ahmedabad";
  document.querySelector(".subtitle").innerHTML=region==="mumbai"?"<strong>PRT Music Teachers’ Workshop – Mumbai Region</strong><br>Participants and Resource Persons | प्रतिभागी एवं संसाधक":"<strong>Mass Saturation CPD Training for KV Music Teachers</strong><br>Target Group: KV Music Teachers of KVS Ahmedabad Region";
  document.querySelector(".badges").innerHTML=region==="mumbai"?"<span class=\"badge\">📍 ZIET Mumbai</span><span class=\"badge\">📅 23–27 November 2026</span><span class=\"badge\">⏱️ 5 Days</span>":"<span class=\"badge\">📍 ZIET Mumbai</span><span class=\"badge\">📅 2–6 November 2026</span><span class=\"badge\">🗓️ Monday–Friday</span><span class=\"badge\">⏱️ 5 Days</span>";
